@@ -1,0 +1,106 @@
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { T } from '../theme';
+import { Avatar } from '../components/Avatar';
+import { BellIcon, CameraIcon, ChevRIcon, IdCardIcon, CardIcon, ShieldIcon, GearIcon, HelpIcon, LogoutIcon } from '../icons/Icons';
+
+const Row = ({ icon, title, sub, danger, last }: { icon: React.ReactNode; title: string; sub?: string; danger?: boolean; last?: boolean }) => (
+  <>
+    <View style={styles.row}>
+      <View style={[styles.rowIcon, danger && styles.rowIconDanger]}>{icon}</View>
+      <View style={{ flex: 1, marginLeft: 14 }}>
+        <Text style={[styles.rowTitle, danger && { color: T.danger }]}>{title}</Text>
+        {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
+      </View>
+      {!danger && <ChevRIcon size={14} color={T.ink4} />}
+    </View>
+    {!last && <View style={styles.rowSep} />}
+  </>
+);
+
+const Group = ({ header, children }: { header: string; children: React.ReactNode }) => (
+  <>
+    <Text style={styles.groupHeader}>{header}</Text>
+    <View style={styles.group}>{children}</View>
+  </>
+);
+
+export const ProfileScreen = () => {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg }}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}>
+        {/* Header */}
+        <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ fontSize: 17, fontWeight: '600', color: T.ink, flex: 1, textAlign: 'center' }}>Profil</Text>
+          <TouchableOpacity style={styles.iconCircle}>
+            <BellIcon size={22} color={T.ink3} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Avatar */}
+        <View style={{ alignItems: 'center', paddingBottom: 14, paddingTop: 8 }}>
+          <View style={{ position: 'relative' }}>
+            <Avatar initials="AM" size={92} tone="green" />
+            <View style={styles.cameraBtn}>
+              <CameraIcon size={14} color="#fff" />
+            </View>
+          </View>
+          <Text style={styles.name}>Alexandre Martin</Text>
+          <Text style={styles.email}>alexandre.martin@email.com</Text>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          {[{ v: '4', l: 'cagnottes' }, { v: '23', l: 'contributions' }, { v: '1 250 €', l: 'levés' }].map(s => (
+            <View key={s.l} style={styles.statCard}>
+              <Text style={styles.statVal}>{s.v}</Text>
+              <Text style={styles.statLbl}>{s.l}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Groups */}
+        <Group header="Compte">
+          <Row icon={<IdCardIcon size={20} />} title="Mes informations" sub="Nom, email, téléphone" />
+          <Row icon={<CardIcon size={20} color={T.brand} />} title="Moyens de paiement" sub="Visa •• 1234 et 1 autre" />
+          <Row icon={<ShieldIcon size={20} />} title="Sécurité & Face ID" last />
+        </Group>
+
+        <Group header="Préférences">
+          <Row icon={<GearIcon size={20} />} title="Paramètres" />
+          <Row icon={<BellIcon size={20} color={T.brand} />} title="Notifications" last />
+        </Group>
+
+        <Group header="Cota">
+          <Row icon={<HelpIcon size={20} />} title="Aide et support" />
+          <Row icon={<LogoutIcon size={20} />} title="Déconnexion" danger last />
+        </Group>
+
+        <Text style={{ textAlign: 'center', paddingTop: 18, color: T.ink4, fontSize: 12 }}>Cota · v1.0.0</Text>
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  iconCircle: { width: 42, height: 42, borderRadius: 21, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+  cameraBtn: { position: 'absolute', right: -2, bottom: -2, width: 30, height: 30, borderRadius: 15, backgroundColor: T.brand, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4 },
+  name: { fontSize: 22, fontWeight: '700', color: T.ink, letterSpacing: -0.3, marginTop: 10 },
+  email: { fontSize: 14, color: T.ink3, marginTop: 4 },
+  statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 4 },
+  statCard: { flex: 1, backgroundColor: T.surface, borderRadius: 14, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: T.sep },
+  statVal: { fontSize: 18, fontWeight: '700', color: T.ink, letterSpacing: -0.3 },
+  statLbl: { fontSize: 11, color: T.ink3, marginTop: 2 },
+  groupHeader: { fontSize: 12, color: T.ink3, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '600', paddingHorizontal: 22, paddingTop: 18, paddingBottom: 6 },
+  group: { marginHorizontal: 20, backgroundColor: T.surface, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: T.sep },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14 },
+  rowIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: T.brandSoft, alignItems: 'center', justifyContent: 'center' },
+  rowIconDanger: { backgroundColor: 'rgba(255,59,48,0.10)' },
+  rowTitle: { fontSize: 16, fontWeight: '500', color: T.ink },
+  rowSub: { fontSize: 12, color: T.ink3, marginTop: 1 },
+  rowSep: { height: 0.5, backgroundColor: T.sep, marginLeft: 64 },
+});

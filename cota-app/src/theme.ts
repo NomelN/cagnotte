@@ -1,0 +1,15 @@
+export const T = {
+  brand: '#1E9D5A',
+  brandDeep: '#0E5E37',
+  brandSoft: '#E7F5EC',
+  brandInk: '#0E5E37',
+  bg: '#F2F2F7',
+  surface: '#FFFFFF',
+  ink: '#1C1C1E',
+  ink2: '#3C3C43',
+  ink3: '#8E8E93',
+  ink4: '#C7C7CC',
+  sep: 'rgba(60,60,67,0.12)',
+  field: '#EFEFF4',
+  danger: '#FF3B30',
+};

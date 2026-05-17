@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Cota",
+    "slug": "cota",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cota.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1E9D5A"
+      },
+      "package": "com.cota.app"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
