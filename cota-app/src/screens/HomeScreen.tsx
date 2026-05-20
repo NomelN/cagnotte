@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,26 +11,23 @@ import { Thumb } from '../components/Thumb';
 import { PrimaryButton } from '../components/Button';
 import { BellIcon, EyeIcon, ArrowRIcon } from '../icons/Icons';
 import { HomeStackParamList } from '../navigation';
-import { homePots } from '../data/mock';
+import { useOwnedPots, useProfile, formatEur } from '../data/hooks';
 import { HomeSkeleton } from './states/HomeSkeleton';
 import { EmptyHome } from './states/EmptyHome';
 
 type Nav = StackNavigationProp<HomeStackParamList>;
 
-const POTS = homePots;
-
 export const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const id = setTimeout(() => setLoading(false), 1100);
-    return () => clearTimeout(id);
-  }, []);
+  const { pots, loading } = useOwnedPots();
+  const { profile } = useProfile();
 
   if (loading) return <HomeSkeleton />;
-  if (POTS.length === 0) return <EmptyHome />;
+  if (!pots || pots.length === 0) return <EmptyHome />;
+
+  const totalRaisedCents = pots.reduce((sum, p) => sum + p.raisedCents, 0);
+  const firstName = profile?.first_name ?? '';
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -40,7 +37,7 @@ export const HomeScreen = () => {
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.greetSmall}>Bonjour,</Text>
-            <Text style={styles.greetName}>Alexandre</Text>
+            <Text style={styles.greetName}>{firstName}</Text>
           </View>
           <TouchableOpacity style={styles.iconCircle}>
             <BellIcon size={22} color={T.ink3} />
@@ -65,8 +62,12 @@ export const HomeScreen = () => {
                 <EyeIcon size={16} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.heroAmount}>1 250,00 €</Text>
-            <Text style={styles.heroSub}>réparti sur 3 cagnottes actives</Text>
+            <Text style={styles.heroAmount}>{formatEur(totalRaisedCents)}</Text>
+            <Text style={styles.heroSub}>
+              {pots.length === 1
+                ? 'réparti sur 1 cagnotte active'
+                : `réparti sur ${pots.length} cagnottes actives`}
+            </Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
             <TouchableOpacity
@@ -86,8 +87,8 @@ export const HomeScreen = () => {
 
         {/* Pots list */}
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
-          {POTS.map((pot, i) => (
-            <TouchableOpacity key={i} style={styles.potRow} activeOpacity={0.75}
+          {pots.map(pot => (
+            <TouchableOpacity key={pot.id} style={styles.potRow} activeOpacity={0.75}
               onPress={() => navigation.navigate('Detail')}>
               <Thumb type={pot.thumb} size={64} />
               <View style={{ flex: 1 }}>

@@ -1,7 +1,11 @@
 import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { CustomTabBar } from '../components/TabBar';
+import { CotaMark } from '../icons/Icons';
+import { useAuth } from '../lib/auth';
+import { T } from '../theme';
 import { HomeScreen } from '../screens/HomeScreen';
 import { DetailScreen } from '../screens/DetailScreen';
 import { ContributeScreen } from '../screens/ContributeScreen';
@@ -148,9 +152,25 @@ function GuestNavigator() {
   );
 }
 
-export function RootNavigator() {
+function SplashScreen() {
   return (
-    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+    <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <CotaMark size={72} color={T.brand} />
+      <ActivityIndicator color={T.brand} />
+    </View>
+  );
+}
+
+export function RootNavigator() {
+  const { session, loading } = useAuth();
+
+  if (loading) return <SplashScreen />;
+
+  return (
+    <RootStack.Navigator
+      screenOptions={{ headerShown: false }}
+      initialRouteName={session ? 'Main' : 'Onboarding'}
+    >
       <RootStack.Screen name="Onboarding" component={OnboardingNavigator} />
       <RootStack.Screen name="Main" component={MainTabs} />
       <RootStack.Screen name="Guest" component={GuestNavigator} />

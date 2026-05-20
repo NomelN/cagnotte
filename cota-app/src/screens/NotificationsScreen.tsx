@@ -1,18 +1,26 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { T } from '../theme';
 import { Avatar } from '../components/Avatar';
-import { homeNotifications } from '../data/mock';
+import { useNotifications } from '../data/hooks';
 import { EmptyNotifications } from './states/EmptyNotifications';
-
-const NOTIFS = homeNotifications;
 
 export const NotificationsScreen = () => {
   const insets = useSafeAreaInsets();
-  const unreadCount = NOTIFS.flatMap(g => g.items).filter(n => n.unread).length;
+  const { groups, loading } = useNotifications();
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={T.brand} />
+      </View>
+    );
+  }
+  const NOTIFS = groups ?? [];
   if (NOTIFS.length === 0) return <EmptyNotifications />;
+
+  const unreadCount = NOTIFS.flatMap(g => g.items).filter(n => n.unread).length;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>

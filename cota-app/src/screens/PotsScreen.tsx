@@ -1,36 +1,37 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { ProgressBar } from '../components/ProgressBar';
 import { Thumb } from '../components/Thumb';
-import { Avatar } from '../components/Avatar';
 import { PrimaryButton } from '../components/Button';
-import { BellIcon, PlusIcon } from '../icons/Icons';
+import { BellIcon, PotsInactiveIcon } from '../icons/Icons';
 import { HomeStackParamList } from '../navigation';
+import { useOwnedPots, useContributedPots } from '../data/hooks';
 
 type Nav = StackNavigationProp<HomeStackParamList>;
 
-const MY_POTS = [
-  { title: 'Vacances en famille', raised: '1 250 €', goal: '2 000 €', pct: 62, thumb: 'beach' as const, participants: 12, daysLeft: 25 },
-  { title: 'Anniversaire Léa',    raised: '320 €',   goal: '500 €',   pct: 64, thumb: 'gift'  as const, participants: 8,  daysLeft: 5  },
-  { title: 'Achat appartement',   raised: '9 450 €', goal: '20 000 €',pct: 47, thumb: 'house' as const, participants: 3,  daysLeft: 90 },
-];
-
-const CONTRIBUTIONS = [
-  { title: 'Pot départ de Camille', raised: '480 €', goal: '600 €', pct: 80, thumb: 'gift'  as const, amount: '30 €', date: 'Hier' },
-  { title: 'Road trip Bretagne',    raised: '850 €', goal: '1 500 €',pct: 57, thumb: 'beach' as const, amount: '50 €', date: '8 mai' },
-];
-
 const TABS = ['Mes cagnottes', 'Contributions'] as const;
 type Tab = typeof TABS[number];
+
+const InlineEmpty = ({ title, sub }: { title: string; sub: string }) => (
+  <View style={styles.empty}>
+    <View style={styles.emptyIcon}>
+      <PotsInactiveIcon size={28} />
+    </View>
+    <Text style={styles.emptyTitle}>{title}</Text>
+    <Text style={styles.emptySub}>{sub}</Text>
+  </View>
+);
 
 export const PotsScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const [activeTab, setActiveTab] = useState<Tab>('Mes cagnottes');
+  const { pots: myPots, loading: loadingMine } = useOwnedPots();
+  const { items: contributions, loading: loadingContribs } = useContributedPots();
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -59,51 +60,64 @@ export const PotsScreen = () => {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
         {activeTab === 'Mes cagnottes' ? (
-          <View style={{ paddingHorizontal: 20, gap: 10, paddingTop: 4 }}>
-            {MY_POTS.map((pot, i) => (
-              <TouchableOpacity key={i} style={styles.potCard} activeOpacity={0.75}
-                onPress={() => navigation.navigate('Detail')}>
-                <Thumb type={pot.thumb} size={64} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.potTitle}>{pot.title}</Text>
-                  <Text style={styles.potAmounts}>
-                    {pot.raised} <Text style={{ color: T.ink4 }}>/ {pot.goal}</Text>
-                  </Text>
-                  <View style={{ marginTop: 6 }}>
-                    <ProgressBar value={pot.pct} height={5} />
+          loadingMine ? (
+            <ActivityIndicator color={T.brand} style={{ marginTop: 24 }} />
+          ) : !myPots || myPots.length === 0 ? (
+            <InlineEmpty
+              title="Aucune cagnotte"
+              sub="Créez votre première cagnotte avec le bouton ci-dessous."
+            />
+          ) : (
+            <View style={{ paddingHorizontal: 20, gap: 10, paddingTop: 4 }}>
+              {myPots.map(pot => (
+                <TouchableOpacity key={pot.id} style={styles.potCard} activeOpacity={0.75}
+                  onPress={() => navigation.navigate('Detail')}>
+                  <Thumb type={pot.thumb} size={64} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.potTitle}>{pot.title}</Text>
+                    <Text style={styles.potAmounts}>
+                      {pot.raised} <Text style={{ color: T.ink4 }}>/ {pot.goal}</Text>
+                    </Text>
+                    <View style={{ marginTop: 6 }}>
+                      <ProgressBar value={pot.pct} height={5} />
+                    </View>
                   </View>
-                  <View style={styles.potMeta}>
-                    <Text style={styles.metaText}>{pot.participants} participants</Text>
-                    <Text style={styles.metaDot}>·</Text>
-                    <Text style={styles.metaText}>{pot.daysLeft}j restants</Text>
-                  </View>
-                </View>
-                <Text style={styles.pctText}>{pot.pct}%</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  <Text style={styles.pctText}>{pot.pct}%</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
         ) : (
-          <View style={{ paddingHorizontal: 20, gap: 10, paddingTop: 4 }}>
-            {CONTRIBUTIONS.map((c, i) => (
-              <TouchableOpacity key={i} style={styles.potCard} activeOpacity={0.75}
-                onPress={() => navigation.navigate('Detail')}>
-                <Thumb type={c.thumb} size={64} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.potTitle}>{c.title}</Text>
-                  <Text style={styles.potAmounts}>
-                    {c.raised} <Text style={{ color: T.ink4 }}>/ {c.goal}</Text>
-                  </Text>
-                  <View style={{ marginTop: 6 }}>
-                    <ProgressBar value={c.pct} height={5} />
+          loadingContribs ? (
+            <ActivityIndicator color={T.brand} style={{ marginTop: 24 }} />
+          ) : !contributions || contributions.length === 0 ? (
+            <InlineEmpty
+              title="Aucune contribution"
+              sub="Vos participations à des cagnottes apparaîtront ici."
+            />
+          ) : (
+            <View style={{ paddingHorizontal: 20, gap: 10, paddingTop: 4 }}>
+              {contributions.map((c, i) => (
+                <TouchableOpacity key={i} style={styles.potCard} activeOpacity={0.75}
+                  onPress={() => navigation.navigate('Detail')}>
+                  <Thumb type={c.pot.thumb} size={64} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.potTitle}>{c.pot.title}</Text>
+                    <Text style={styles.potAmounts}>
+                      {c.pot.raised} <Text style={{ color: T.ink4 }}>/ {c.pot.goal}</Text>
+                    </Text>
+                    <View style={{ marginTop: 6 }}>
+                      <ProgressBar value={c.pot.pct} height={5} />
+                    </View>
                   </View>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                  <Text style={styles.contribAmount}>{c.amount}</Text>
-                  <Text style={styles.metaText}>{c.date}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                    <Text style={styles.contribAmount}>{c.amount}</Text>
+                    <Text style={styles.metaText}>{c.date}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
         )}
       </ScrollView>
 
@@ -150,6 +164,15 @@ const styles = StyleSheet.create({
   metaDot: { fontSize: 11, color: T.ink4 },
   pctText: { fontSize: 13, fontWeight: '600', color: T.ink2 },
   contribAmount: { fontSize: 15, fontWeight: '700', color: T.brand },
+  empty: {
+    paddingHorizontal: 28, paddingTop: 40, alignItems: 'center',
+  },
+  emptyIcon: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: T.brandSoft,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: T.ink, textAlign: 'center' },
+  emptySub: { fontSize: 14, color: T.ink3, marginTop: 6, lineHeight: 20, textAlign: 'center' },
   cta: {
     paddingHorizontal: 20, paddingTop: 12,
     backgroundColor: 'rgba(242,242,247,0.97)',
