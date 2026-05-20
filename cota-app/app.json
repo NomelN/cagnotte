@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "scheme": "cota",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.cota.app"

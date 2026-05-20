@@ -10,13 +10,13 @@ interface ButtonProps {
 
 export const PrimaryButton = ({ children, onPress, style }: ButtonProps) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[styles.primary, style]}>
-    <Text style={styles.primaryText}>{children}</Text>
+    {typeof children === 'string' ? <Text style={styles.primaryText}>{children}</Text> : children}
   </TouchableOpacity>
 );
 
 export const SecondaryButton = ({ children, onPress, style }: ButtonProps) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[styles.secondary, style]}>
-    <Text style={styles.secondaryText}>{children}</Text>
+    {typeof children === 'string' ? <Text style={styles.secondaryText}>{children}</Text> : children}
   </TouchableOpacity>
 );
 

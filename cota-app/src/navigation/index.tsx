@@ -22,6 +22,10 @@ import { WelcomeHomeScreen } from '../screens/onboarding/WelcomeHomeScreen';
 import { PaymentProcessingScreen } from '../screens/states/PaymentProcessingScreen';
 import { SuccessContributionScreen } from '../screens/states/SuccessContributionScreen';
 import { SuccessCreatedScreen } from '../screens/states/SuccessCreatedScreen';
+import { PublicLandingScreen } from '../screens/public/PublicLandingScreen';
+import { PublicContributeScreen } from '../screens/public/PublicContributeScreen';
+import { PublicPaymentScreen } from '../screens/public/PublicPaymentScreen';
+import { PublicThanksScreen } from '../screens/public/PublicThanksScreen';
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -53,14 +57,23 @@ export type OnboardingStackParamList = {
   WelcomeHome: { firstName: string };
 };
 
+export type GuestStackParamList = {
+  GuestLanding: { potId?: string } | undefined;
+  GuestContribute: undefined;
+  GuestPayment: { amount: number };
+  GuestThanks: { amount: number };
+};
+
 export type RootStackParamList = {
   Onboarding: undefined;
   Main: undefined;
+  Guest: undefined;
 };
 
 const HomeStack = createStackNavigator<HomeStackParamList>();
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const OnboardingStack = createStackNavigator<OnboardingStackParamList>();
+const GuestStack = createStackNavigator<GuestStackParamList>();
 const RootStack = createStackNavigator<RootStackParamList>();
 
 function HomeStackNavigator() {
@@ -120,11 +133,27 @@ function OnboardingNavigator() {
   );
 }
 
+function GuestNavigator() {
+  return (
+    <GuestStack.Navigator screenOptions={{ headerShown: false }}>
+      <GuestStack.Screen name="GuestLanding" component={PublicLandingScreen} />
+      <GuestStack.Screen name="GuestContribute" component={PublicContributeScreen} />
+      <GuestStack.Screen name="GuestPayment" component={PublicPaymentScreen} />
+      <GuestStack.Screen
+        name="GuestThanks"
+        component={PublicThanksScreen}
+        options={{ gestureEnabled: false }}
+      />
+    </GuestStack.Navigator>
+  );
+}
+
 export function RootNavigator() {
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
       <RootStack.Screen name="Onboarding" component={OnboardingNavigator} />
       <RootStack.Screen name="Main" component={MainTabs} />
+      <RootStack.Screen name="Guest" component={GuestNavigator} />
     </RootStack.Navigator>
   );
 }
