@@ -1,20 +1,28 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { Avatar } from '../components/Avatar';
 import { BellIcon, CameraIcon, ChevRIcon, IdCardIcon, CardIcon, ShieldIcon, GearIcon, HelpIcon, LogoutIcon } from '../icons/Icons';
+import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabase';
+import { useUserStats, formatEur } from '../data/hooks';
+import { RootStackParamList } from '../navigation';
 
-const Row = ({ icon, title, sub, danger, last }: { icon: React.ReactNode; title: string; sub?: string; danger?: boolean; last?: boolean }) => (
+const Row = ({ icon, title, sub, danger, last, onPress }: {
+  icon: React.ReactNode; title: string; sub?: string; danger?: boolean; last?: boolean; onPress?: () => void;
+}) => (
   <>
-    <View style={styles.row}>
+    <TouchableOpacity activeOpacity={onPress ? 0.7 : 1} onPress={onPress} style={styles.row}>
       <View style={[styles.rowIcon, danger && styles.rowIconDanger]}>{icon}</View>
       <View style={{ flex: 1, marginLeft: 14 }}>
         <Text style={[styles.rowTitle, danger && { color: T.danger }]}>{title}</Text>
         {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
       </View>
       {!danger && <ChevRIcon size={14} color={T.ink4} />}
-    </View>
+    </TouchableOpacity>
     {!last && <View style={styles.rowSep} />}
   </>
 );
@@ -26,8 +34,55 @@ const Group = ({ header, children }: { header: string; children: React.ReactNode
   </>
 );
 
+type RootNav = StackNavigationProp<RootStackParamList>;
+
 export const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
+  const { user, signOut } = useAuth();
+  const navigation = useNavigation();
+  const { stats } = useUserStats();
+  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled) setProfile(data ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const fullName =
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || 'Utilisateur Cota';
+  const initials =
+    ((profile?.first_name?.[0] ?? '') + (profile?.last_name?.[0] ?? '')).toUpperCase() || 'U';
+
+  const confirmSignOut = () => {
+    Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Déconnecter',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+            const root = navigation.getParent<RootNav>() ?? (navigation as unknown as RootNav);
+            root.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Échec de la déconnexion';
+            Alert.alert('Erreur', message);
+          }
+        },
+      },
+    ]);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -44,18 +99,22 @@ export const ProfileScreen = () => {
         {/* Avatar */}
         <View style={{ alignItems: 'center', paddingBottom: 14, paddingTop: 8 }}>
           <View style={{ position: 'relative' }}>
-            <Avatar initials="AM" size={92} tone="green" />
+            <Avatar initials={initials} size={92} tone="green" />
             <View style={styles.cameraBtn}>
               <CameraIcon size={14} color="#fff" />
             </View>
           </View>
-          <Text style={styles.name}>Alexandre Martin</Text>
-          <Text style={styles.email}>alexandre.martin@email.com</Text>
+          <Text style={styles.name}>{fullName}</Text>
+          <Text style={styles.email}>{user?.email ?? ''}</Text>
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          {[{ v: '4', l: 'cagnottes' }, { v: '23', l: 'contributions' }, { v: '1 250 €', l: 'levés' }].map(s => (
+          {[
+            { v: String(stats?.pots ?? 0), l: 'cagnottes' },
+            { v: String(stats?.contributions ?? 0), l: 'contributions' },
+            { v: formatEur(stats?.raisedCents ?? 0), l: 'levés' },
+          ].map(s => (
             <View key={s.l} style={styles.statCard}>
               <Text style={styles.statVal}>{s.v}</Text>
               <Text style={styles.statLbl}>{s.l}</Text>
@@ -66,7 +125,7 @@ export const ProfileScreen = () => {
         {/* Groups */}
         <Group header="Compte">
           <Row icon={<IdCardIcon size={20} />} title="Mes informations" sub="Nom, email, téléphone" />
-          <Row icon={<CardIcon size={20} color={T.brand} />} title="Moyens de paiement" sub="Visa •• 1234 et 1 autre" />
+          <Row icon={<CardIcon size={20} color={T.brand} />} title="Moyens de paiement" sub="Aucune carte enregistrée" />
           <Row icon={<ShieldIcon size={20} />} title="Sécurité & Face ID" last />
         </Group>
 
@@ -77,7 +136,7 @@ export const ProfileScreen = () => {
 
         <Group header="Cota">
           <Row icon={<HelpIcon size={20} />} title="Aide et support" />
-          <Row icon={<LogoutIcon size={20} />} title="Déconnexion" danger last />
+          <Row icon={<LogoutIcon size={20} />} title="Déconnexion" danger last onPress={confirmSignOut} />
         </Group>
 
         <Text style={{ textAlign: 'center', paddingTop: 18, color: T.ink4, fontSize: 12 }}>Cota · v1.0.0</Text>

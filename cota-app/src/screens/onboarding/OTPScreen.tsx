@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet, StatusBar,
+  View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet, StatusBar, Alert,
   KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,11 +12,12 @@ import { PrimaryButton } from '../../components/Button';
 import { StepProgress } from '../../components/StepProgress';
 import { BackIcon, ShieldIcon } from '../../icons/Icons';
 import { OnboardingStackParamList } from '../../navigation';
+import { useAuth } from '../../lib/auth';
 
 type Nav = StackNavigationProp<OnboardingStackParamList, 'OTP'>;
 type Rt = RouteProp<OnboardingStackParamList, 'OTP'>;
 
-const OTP_LENGTH = 6;
+const OTP_LENGTH = 8;
 
 export const OTPScreen = () => {
   const insets = useSafeAreaInsets();
@@ -24,9 +25,36 @@ export const OTPScreen = () => {
   const route = useRoute<Rt>();
   const email = route.params?.email ?? 'vous@email.com';
 
+  const { verifyOtp, resendOtp } = useAuth();
   const inputRef = useRef<TextInput>(null);
   const [code, setCode] = useState('');
   const [seconds, setSeconds] = useState(24);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleVerify = async () => {
+    if (code.length < OTP_LENGTH || submitting) return;
+    setSubmitting(true);
+    Keyboard.dismiss();
+    try {
+      await verifyOtp(email, code);
+      navigation.navigate('ProfileSetup');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Code invalide';
+      Alert.alert('Vérification échouée', message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      await resendOtp(email);
+      setSeconds(24);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Impossible de renvoyer le code';
+      Alert.alert('Erreur', message);
+    }
+  };
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -73,7 +101,7 @@ export const OTPScreen = () => {
           <Text style={styles.badgeText}>Code envoyé</Text>
         </View>
 
-        <Text style={styles.title}>Saisissez le code à 6 chiffres</Text>
+        <Text style={styles.title}>Saisissez le code à {OTP_LENGTH} chiffres</Text>
         <Text style={styles.subtitle}>
           Envoyé à <Text style={{ color: T.ink, fontWeight: '600' }}>{email}</Text>
           {'  ·  '}
@@ -106,20 +134,17 @@ export const OTPScreen = () => {
               Renvoyer dans 0:{seconds.toString().padStart(2, '0')}
             </Text>
           ) : (
-            <Text style={styles.link} onPress={() => setSeconds(24)}>Renvoyer le code</Text>
+            <Text style={styles.link} onPress={handleResend}>Renvoyer le code</Text>
           )}
         </Text>
       </View>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
         <PrimaryButton
-          onPress={() => {
-            Keyboard.dismiss();
-            navigation.navigate('ProfileSetup');
-          }}
-          style={code.length < OTP_LENGTH ? { opacity: 0.4 } : undefined}
+          onPress={handleVerify}
+          style={code.length < OTP_LENGTH || submitting ? { opacity: 0.4 } : undefined}
         >
-          Vérifier
+          {submitting ? 'Vérification…' : 'Vérifier'}
         </PrimaryButton>
       </View>
       </KeyboardAvoidingView>
@@ -143,14 +168,14 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: T.ink3, marginTop: 6, lineHeight: 20 },
   link: { color: T.brand, fontWeight: '600' },
   hiddenInput: { position: 'absolute', opacity: 0, height: 1, width: 1 },
-  cells: { flexDirection: 'row', gap: 8, marginTop: 22 },
+  cells: { flexDirection: 'row', gap: 6, marginTop: 22 },
   cell: {
-    flex: 1, aspectRatio: 1, borderRadius: 12, backgroundColor: T.surface,
+    flex: 1, aspectRatio: 1, borderRadius: 10, backgroundColor: T.surface,
     borderWidth: 1, borderColor: T.sep,
     alignItems: 'center', justifyContent: 'center',
   },
   cellActive: { borderWidth: 2, borderColor: T.brand },
-  cellText: { fontSize: 26, fontWeight: '700', color: T.ink },
+  cellText: { fontSize: 22, fontWeight: '700', color: T.ink },
   resend: { marginTop: 18, textAlign: 'center', fontSize: 13, color: T.ink3 },
   footer: {
     paddingHorizontal: 20, paddingTop: 12,

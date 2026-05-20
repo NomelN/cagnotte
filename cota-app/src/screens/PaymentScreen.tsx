@@ -4,45 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { T } from '../theme';
 import { CardIcon, ChevRIcon, PlusIcon, ShieldIcon } from '../icons/Icons';
 
-type TxType = 'in' | 'out';
-
-interface Transaction {
-  label: string;
-  sub: string;
-  amount: string;
-  type: TxType;
-  date: string;
-}
-
-const TRANSACTIONS: { section: string; items: Transaction[] }[] = [
-  {
-    section: "Aujourd'hui",
-    items: [
-      { label: 'Anniversaire Léa',      sub: 'Contribution reçue · Thomas',  amount: '+50 €',   type: 'in',  date: '13:24' },
-      { label: 'Vacances en famille',    sub: 'Contribution reçue · Julie',   amount: '+30 €',   type: 'in',  date: '09:11' },
-    ],
-  },
-  {
-    section: '14 mai 2026',
-    items: [
-      { label: 'Anniversaire Léa',      sub: 'Contribution reçue · Marc',    amount: '+100 €',  type: 'in',  date: '18:40' },
-      { label: 'Road trip Bretagne',     sub: 'Ta contribution',              amount: '-50 €',   type: 'out', date: '11:05' },
-    ],
-  },
-  {
-    section: '10 mai 2026',
-    items: [
-      { label: 'Pot départ Camille',     sub: 'Ta contribution',              amount: '-30 €',   type: 'out', date: '16:22' },
-      { label: 'Vacances en famille',    sub: 'Contribution reçue · Sophie',  amount: '+20 €',   type: 'in',  date: '08:55' },
-    ],
-  },
-];
-
-const CARDS = [
-  { label: 'Visa', last4: '1234', isDefault: true },
-  { label: 'Mastercard', last4: '5678', isDefault: false },
-];
-
 const TABS = ['Historique', 'Cartes'] as const;
 type Tab = typeof TABS[number];
 
@@ -50,8 +11,12 @@ export const PaymentScreen = () => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('Historique');
 
-  const totalIn = 200;
-  const totalOut = 80;
+  // TODO: hydrate from contributions + payment_methods once flows are wired.
+  const transactions: { section: string; items: never[] }[] = [];
+  const cards: never[] = [];
+
+  const totalIn = 0;
+  const totalOut = 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -88,53 +53,26 @@ export const PaymentScreen = () => {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
         {activeTab === 'Historique' ? (
-          <View style={{ paddingHorizontal: 20 }}>
-            {TRANSACTIONS.map((group) => (
-              <View key={group.section}>
-                <Text style={styles.sectionLabel}>{group.section}</Text>
-                <View style={styles.txGroup}>
-                  {group.items.map((tx, i) => (
-                    <View key={i}>
-                      <View style={styles.txRow}>
-                        <View style={[styles.txDot, { backgroundColor: tx.type === 'in' ? T.brandSoft : T.field }]}>
-                          <Text style={{ fontSize: 16, color: tx.type === 'in' ? T.brand : T.ink3 }}>
-                            {tx.type === 'in' ? '↓' : '↑'}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                          <Text style={styles.txLabel}>{tx.label}</Text>
-                          <Text style={styles.txSub}>{tx.sub}</Text>
-                        </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          <Text style={[styles.txAmount, { color: tx.type === 'in' ? T.brand : T.ink }]}>{tx.amount}</Text>
-                          <Text style={styles.txTime}>{tx.date}</Text>
-                        </View>
-                      </View>
-                      {i < group.items.length - 1 && <View style={styles.sep} />}
-                    </View>
-                  ))}
-                </View>
+          transactions.length === 0 ? (
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <CardIcon size={22} color={T.brand} />
               </View>
-            ))}
-          </View>
+              <Text style={styles.emptyTitle}>Aucune transaction</Text>
+              <Text style={styles.emptySub}>
+                L'historique de vos contributions et encaissements apparaîtra ici.
+              </Text>
+            </View>
+          ) : null
         ) : (
           <View style={{ paddingHorizontal: 20 }}>
             <Text style={styles.sectionLabel}>Mes cartes</Text>
-            <View style={styles.txGroup}>
-              {CARDS.map((card, i) => (
-                <View key={i}>
-                  <View style={styles.txRow}>
-                    <CardIcon size={22} color={T.ink2} />
-                    <View style={{ flex: 1, marginLeft: 14 }}>
-                      <Text style={styles.txLabel}>{card.label} •••• {card.last4}</Text>
-                      {card.isDefault && <Text style={[styles.txSub, { color: T.brand }]}>Par défaut</Text>}
-                    </View>
-                    <ChevRIcon size={14} color={T.ink4} />
-                  </View>
-                  {i < CARDS.length - 1 && <View style={styles.sep} />}
-                </View>
-              ))}
-            </View>
+
+            {cards.length === 0 && (
+              <View style={[styles.emptyCard]}>
+                <Text style={styles.emptySub}>Aucune carte enregistrée.</Text>
+              </View>
+            )}
 
             <TouchableOpacity style={styles.addCard}>
               <View style={styles.addCardIcon}>
@@ -206,4 +144,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center', marginTop: 8,
   },
   securityText: { fontSize: 12, color: T.ink3, flex: 1 },
+  empty: {
+    paddingHorizontal: 28, paddingTop: 40, alignItems: 'center',
+  },
+  emptyIcon: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: T.brandSoft,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: T.ink, textAlign: 'center' },
+  emptySub: { fontSize: 14, color: T.ink3, marginTop: 6, lineHeight: 20, textAlign: 'center' },
+  emptyCard: {
+    backgroundColor: T.surface, borderRadius: 16, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: T.sep, alignItems: 'center',
+  },
 });

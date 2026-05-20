@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert,
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,21 +12,38 @@ import { PrimaryButton } from '../../components/Button';
 import { BackIcon, EyeIcon, CheckIcon } from '../../icons/Icons';
 import { StepProgress } from '../../components/StepProgress';
 import { OnboardingStackParamList } from '../../navigation';
+import { useAuth } from '../../lib/auth';
 
 type Nav = StackNavigationProp<OnboardingStackParamList, 'EmailForm'>;
 
 export const EmailFormScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
+  const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [consent, setConsent] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [emailFocused, setEmailFocused] = useState(false);
   const [pwdFocused, setPwdFocused] = useState(false);
 
-  const canContinue = email.includes('@') && password.length >= 8;
+  const canContinue = email.includes('@') && password.length >= 8 && !submitting;
+
+  const handleSubmit = async () => {
+    if (!canContinue) return;
+    setSubmitting(true);
+    try {
+      await signUp(email.trim(), password);
+      navigation.navigate('OTP', { email: email.trim() });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Échec de l\'inscription';
+      Alert.alert('Inscription impossible', message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -106,10 +123,10 @@ export const EmailFormScreen = () => {
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
           <PrimaryButton
-            onPress={() => navigation.navigate('OTP', { email: email || 'vous@email.com' })}
+            onPress={handleSubmit}
             style={!canContinue ? { opacity: 0.4 } : undefined}
           >
-            Continuer
+            {submitting ? 'Envoi…' : 'Continuer'}
           </PrimaryButton>
         </View>
       </KeyboardAvoidingView>
