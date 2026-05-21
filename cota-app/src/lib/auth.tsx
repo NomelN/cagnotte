@@ -58,6 +58,78 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  // After OAuth, auto-fill profiles table from provider metadata (name, photo)
+  const syncOAuthProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const meta = user.user_metadata ?? {};
+
+    // Google sends: given_name, family_name, full_name, picture / avatar_url
+    // Facebook sends: full_name / name, picture / avatar_url
+    const firstName =
+      meta.given_name ||
+      (meta.full_name ?? meta.name ?? '').split(' ')[0] ||
+      '';
+    const lastName =
+      meta.family_name ||
+      (meta.full_name ?? meta.name ?? '').split(' ').slice(1).join(' ') ||
+      '';
+    const avatarUrl = meta.avatar_url || meta.picture || null;
+
+    // Only upsert if we actually have something useful
+    if (!firstName && !avatarUrl) return;
+
+    await supabase
+      .from('profiles')
+      .upsert(
+        { id: user.id, first_name: firstName, last_name: lastName, avatar_url: avatarUrl },
+        { onConflict: 'id', ignoreDuplicates: false },
+      );
+  };
+
+  // Handles both PKCE (code in query params) and implicit (tokens in fragment)
+  const oauthSignIn = async (provider: 'google' | 'facebook') => {
+    const redirectTo = 'cota://auth/callback';
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error) throw error;
+    if (!data.url) throw new Error(`Impossible d'obtenir l'URL ${provider}`);
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type === 'cancel' || result.type === 'dismiss') return;
+    if (result.type !== 'success') return;
+
+    const parsed = new URL(result.url);
+
+    // PKCE flow: code in query string → exchange for session
+    const code = parsed.searchParams.get('code');
+    if (code) {
+      const { error: err } = await supabase.auth.exchangeCodeForSession(code);
+      if (err) throw err;
+      await syncOAuthProfile();
+      return;
+    }
+
+    // Implicit flow: tokens in URL fragment (#access_token=...&refresh_token=...)
+    const fragment = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+    const accessToken = fragment.get('access_token');
+    const refreshToken = fragment.get('refresh_token');
+    if (accessToken && refreshToken) {
+      const { error: err } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (err) throw err;
+      await syncOAuthProfile();
+      return;
+    }
+
+    throw new Error('Connexion échouée — réessayez');
+  };
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
@@ -91,41 +163,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       },
 
       signInWithGoogle: async () => {
-        const redirectTo = makeRedirectUri({ scheme: 'cota', path: 'auth/callback' });
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: { redirectTo, skipBrowserRedirect: true },
-        });
-        if (error) throw error;
-        if (!data.url) throw new Error('Impossible d\'obtenir l\'URL Google');
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-        if (result.type === 'success') {
-          const url = new URL(result.url);
-          const code = url.searchParams.get('code');
-          if (code) {
-            const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
-            if (sessionError) throw sessionError;
-          }
-        }
+        await oauthSignIn('google');
       },
 
       signInWithFacebook: async () => {
-        const redirectTo = makeRedirectUri({ scheme: 'cota', path: 'auth/callback' });
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'facebook',
-          options: { redirectTo, skipBrowserRedirect: true },
-        });
-        if (error) throw error;
-        if (!data.url) throw new Error('Impossible d\'obtenir l\'URL Facebook');
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-        if (result.type === 'success') {
-          const url = new URL(result.url);
-          const code = url.searchParams.get('code');
-          if (code) {
-            const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
-            if (sessionError) throw sessionError;
-          }
-        }
+        await oauthSignIn('facebook');
       },
 
       signInWithPhone: async (phone: string) => {

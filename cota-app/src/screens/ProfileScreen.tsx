@@ -41,14 +41,14 @@ export const ProfileScreen = () => {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
   const { stats } = useUserStats();
-  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null } | null>(null);
 
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     supabase
       .from('profiles')
-      .select('first_name, last_name')
+      .select('first_name, last_name, avatar_url')
       .eq('id', user.id)
       .single()
       .then(({ data }) => {
@@ -99,7 +99,7 @@ export const ProfileScreen = () => {
         {/* Avatar */}
         <View style={{ alignItems: 'center', paddingBottom: 14, paddingTop: 8 }}>
           <View style={{ position: 'relative' }}>
-            <Avatar initials={initials} size={92} tone="green" />
+            <Avatar initials={initials} size={92} tone="green" imageUrl={profile?.avatar_url} />
             <View style={styles.cameraBtn}>
               <CameraIcon size={14} color="#fff" />
             </View>

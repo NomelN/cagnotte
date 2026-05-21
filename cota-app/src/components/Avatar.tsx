@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { T } from '../theme';
 
 type Tone = 'neutral' | 'blue' | 'pink' | 'amber' | 'green' | 'violet';
@@ -17,12 +17,25 @@ interface AvatarProps {
   initials: string;
   size?: number;
   tone?: Tone;
+  imageUrl?: string | null;
 }
 
-export const Avatar = ({ initials, size = 40, tone = 'neutral' }: AvatarProps) => {
+export const Avatar = ({ initials, size = 40, tone = 'neutral', imageUrl }: AvatarProps) => {
   const colors = TONES[tone];
+  const radius = size / 2;
+
+  if (imageUrl) {
+    return (
+      <Image
+        source={{ uri: imageUrl }}
+        style={{ width: size, height: size, borderRadius: radius }}
+        resizeMode="cover"
+      />
+    );
+  }
+
   return (
-    <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.bg }]}>
+    <View style={[styles.circle, { width: size, height: size, borderRadius: radius, backgroundColor: colors.bg }]}>
       <Text style={[styles.text, { fontSize: size * 0.38, color: colors.fg }]}>{initials}</Text>
     </View>
   );
