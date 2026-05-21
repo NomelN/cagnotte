@@ -59,12 +59,12 @@ export const ProfileSetupScreen = () => {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top + 56}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 22 }}
+          contentContainerStyle={{ padding: 22, paddingBottom: insets.bottom + 100 }}
           keyboardShouldPersistTaps="handled"
         >
           <StepProgress total={3} current={3} style={{ marginBottom: 22 }} />

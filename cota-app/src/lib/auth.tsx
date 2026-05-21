@@ -1,7 +1,12 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import type { Session, User } from '@supabase/supabase-js';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from './supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextValue {
   session: Session | null;
@@ -9,7 +14,12 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithApple: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithFacebook: () => Promise<void>;
+  signInWithPhone: (phone: string) => Promise<void>;
   verifyOtp: (email: string, token: string) => Promise<void>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
   updateProfile: (input: { firstName: string; lastName: string }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -21,7 +31,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load any persisted session on mount, then subscribe to auth changes.
   useEffect(() => {
     let isMounted = true;
 
@@ -35,7 +44,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(next);
     });
 
-    // Keep refresh going when app comes back to foreground.
     const appStateSub = AppState.addEventListener('change', state => {
       if (state === 'active') supabase.auth.startAutoRefresh();
       else supabase.auth.stopAutoRefresh();
@@ -66,11 +74,79 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) throw error;
       },
 
+      signInWithApple: async () => {
+        if (Platform.OS !== 'ios') throw new Error('Apple Sign-In est disponible uniquement sur iOS');
+        const credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          ],
+        });
+        if (!credential.identityToken) throw new Error('Apple n\'a pas retourné de token');
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: credential.identityToken,
+        });
+        if (error) throw error;
+      },
+
+      signInWithGoogle: async () => {
+        const redirectTo = makeRedirectUri({ scheme: 'cota', path: 'auth/callback' });
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo, skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (!data.url) throw new Error('Impossible d\'obtenir l\'URL Google');
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (result.type === 'success') {
+          const url = new URL(result.url);
+          const code = url.searchParams.get('code');
+          if (code) {
+            const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+            if (sessionError) throw sessionError;
+          }
+        }
+      },
+
+      signInWithFacebook: async () => {
+        const redirectTo = makeRedirectUri({ scheme: 'cota', path: 'auth/callback' });
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'facebook',
+          options: { redirectTo, skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (!data.url) throw new Error('Impossible d\'obtenir l\'URL Facebook');
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (result.type === 'success') {
+          const url = new URL(result.url);
+          const code = url.searchParams.get('code');
+          if (code) {
+            const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+            if (sessionError) throw sessionError;
+          }
+        }
+      },
+
+      signInWithPhone: async (phone: string) => {
+        const { error } = await supabase.auth.signInWithOtp({ phone });
+        if (error) throw error;
+      },
+
       verifyOtp: async (email, token) => {
         const { error } = await supabase.auth.verifyOtp({
           email,
           token,
           type: 'signup',
+        });
+        if (error) throw error;
+      },
+
+      verifyPhoneOtp: async (phone, token) => {
+        const { error } = await supabase.auth.verifyOtp({
+          phone,
+          token,
+          type: 'sms',
         });
         if (error) throw error;
       },

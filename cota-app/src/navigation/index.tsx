@@ -20,6 +20,7 @@ import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { ValuePropsScreen } from '../screens/onboarding/ValuePropsScreen';
 import { AuthMethodsScreen } from '../screens/onboarding/AuthMethodsScreen';
 import { EmailFormScreen } from '../screens/onboarding/EmailFormScreen';
+import { PhoneFormScreen } from '../screens/onboarding/PhoneFormScreen';
 import { OTPScreen } from '../screens/onboarding/OTPScreen';
 import { ProfileSetupScreen } from '../screens/onboarding/ProfileSetupScreen';
 import { WelcomeHomeScreen } from '../screens/onboarding/WelcomeHomeScreen';
@@ -54,9 +55,10 @@ export type RootTabParamList = {
 export type OnboardingStackParamList = {
   Welcome: undefined;
   ValueProps: undefined;
-  AuthMethods: undefined;
-  EmailForm: undefined;
-  OTP: { email: string };
+  AuthMethods: { mode: 'login' | 'signup' };
+  EmailForm: { mode: 'login' | 'signup' };
+  PhoneForm: { mode: 'login' | 'signup' };
+  OTP: { email?: string; phone?: string };
   ProfileSetup: undefined;
   WelcomeHome: { firstName: string };
 };
@@ -130,6 +132,7 @@ function OnboardingNavigator() {
       <OnboardingStack.Screen name="ValueProps" component={ValuePropsScreen} />
       <OnboardingStack.Screen name="AuthMethods" component={AuthMethodsScreen} />
       <OnboardingStack.Screen name="EmailForm" component={EmailFormScreen} />
+      <OnboardingStack.Screen name="PhoneForm" component={PhoneFormScreen} />
       <OnboardingStack.Screen name="OTP" component={OTPScreen} />
       <OnboardingStack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
       <OnboardingStack.Screen name="WelcomeHome" component={WelcomeHomeScreen} />
@@ -167,12 +170,12 @@ export function RootNavigator() {
   if (loading) return <SplashScreen />;
 
   return (
-    <RootStack.Navigator
-      screenOptions={{ headerShown: false }}
-      initialRouteName={session ? 'Main' : 'Onboarding'}
-    >
-      <RootStack.Screen name="Onboarding" component={OnboardingNavigator} />
-      <RootStack.Screen name="Main" component={MainTabs} />
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      {session ? (
+        <RootStack.Screen name="Main" component={MainTabs} />
+      ) : (
+        <RootStack.Screen name="Onboarding" component={OnboardingNavigator} />
+      )}
       <RootStack.Screen name="Guest" component={GuestNavigator} />
     </RootStack.Navigator>
   );
