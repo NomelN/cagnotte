@@ -15,6 +15,15 @@ import { useAuth } from '../../lib/auth';
 type Nav = StackNavigationProp<OnboardingStackParamList, 'AuthMethods'>;
 type Rt = RouteProp<OnboardingStackParamList, 'AuthMethods'>;
 
+const Check = ({ ok, label }: { ok: boolean; label: string }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <Text style={{ fontSize: 12, color: ok ? T.brand : T.ink4, width: 14 }}>
+      {ok ? '✓' : '○'}
+    </Text>
+    <Text style={{ fontSize: 12, color: ok ? T.ink2 : T.ink3 }}>{label}</Text>
+  </View>
+);
+
 export const AuthMethodsScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
@@ -97,11 +106,19 @@ export const AuthMethodsScreen = () => {
     }
   };
 
-  // Supabase default: minimum 6 characters, no required character types.
-  const MIN_PASSWORD = 6;
-  const passwordLongEnough = password.length >= MIN_PASSWORD;
+  // Supabase project config: min 8 chars, lower + upper + digit + symbol.
+  // Symbol set: !@#$%^&*()_+-=[]{};'\:"|<>?,./`~
+  const MIN_PASSWORD = 8;
+  const SYMBOL_RE = /[!@#$%^&*()_+\-=\[\]{};'\\:"|<>?,./`~]/;
+  const passwordChecks = {
+    length: password.length >= MIN_PASSWORD,
+    lower: /[a-z]/.test(password),
+    upper: /[A-Z]/.test(password),
+    digit: /\d/.test(password),
+    symbol: SYMBOL_RE.test(password),
+  };
+  const passwordValid = Object.values(passwordChecks).every(Boolean);
   const passwordsMatch = !isLogin ? password === confirmPassword && confirmPassword.length > 0 : true;
-  const showPasswordHint = !isLogin && password.length > 0 && !passwordLongEnough;
   const showMismatchHint = !isLogin && confirmPassword.length > 0 && password !== confirmPassword;
 
   const canSubmit = email.trim().length > 0 && password.length > 0 && !loadingEmail &&
@@ -109,7 +126,7 @@ export const AuthMethodsScreen = () => {
       ? true
       : firstName.trim().length > 0
         && lastName.trim().length > 0
-        && passwordLongEnough
+        && passwordValid
         && passwordsMatch);
 
   return (
@@ -208,11 +225,13 @@ export const AuthMethodsScreen = () => {
           </View>
 
           {!isLogin && (
-            <Text style={[styles.hint, showPasswordHint && styles.hintError]}>
-              {showPasswordHint
-                ? `Encore ${MIN_PASSWORD - password.length} caractère${MIN_PASSWORD - password.length > 1 ? 's' : ''}`
-                : `Au moins ${MIN_PASSWORD} caractères`}
-            </Text>
+            <View style={styles.checklist}>
+              <Check ok={passwordChecks.length} label={`Au moins ${MIN_PASSWORD} caractères`} />
+              <Check ok={passwordChecks.lower}  label="Une lettre minuscule (a-z)" />
+              <Check ok={passwordChecks.upper}  label="Une lettre majuscule (A-Z)" />
+              <Check ok={passwordChecks.digit}  label="Un chiffre (0-9)" />
+              <Check ok={passwordChecks.symbol} label="Un caractère spécial (!@#$…)" />
+            </View>
           )}
 
           {/* Signup only: confirm password */}
@@ -390,6 +409,7 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: 28, marginTop: 28, alignItems: 'center' },
   hint: { fontSize: 12, color: T.ink3, marginTop: -6, marginLeft: 4 },
   hintError: { color: T.danger },
+  checklist: { marginTop: -4, marginLeft: 4, gap: 4 },
   legal: { fontSize: 11, color: T.ink3, lineHeight: 17, textAlign: 'center' },
   legalLink: { textDecorationLine: 'underline', color: T.brand, fontWeight: '600' },
 });
