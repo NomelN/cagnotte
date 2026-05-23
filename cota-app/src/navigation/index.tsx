@@ -44,7 +44,7 @@ export type HomeStackParamList = {
   Contribute: { potId: string };
   CreateCategory: undefined;
   CreateDetails: { category: string };
-  Share: undefined;
+  Share: { potId: string; potTitle: string };
   Notifications: undefined;
   PaymentProcessing: { potId: string; amount: number; cardId: string };
   SuccessContribution: { potId: string; amount: number; contributionId: string; cardId: string };

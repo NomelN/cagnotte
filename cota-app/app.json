@@ -14,9 +14,14 @@
       "adaptiveIcon": {
         "backgroundColor": "#1E9D5A"
       },
-      "package": "com.cota.app"
+      "package": "com.cota.app",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "plugins": [
+      "expo-dev-client",
       "expo-font",
       "expo-web-browser",
       "expo-apple-authentication",
@@ -28,7 +33,14 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "expo-local-authentication"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "534378ef-18ff-4003-89c1-51fa6c071419"
+      }
+    },
+    "owner": "mike77500"
   }
 }

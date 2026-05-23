@@ -394,7 +394,7 @@ export const DetailScreen = () => {
           </View>
           <TouchableOpacity
             style={styles.shareIconBtn}
-            onPress={() => navigation.navigate('Share')}
+            onPress={() => pot && navigation.navigate('Share', { potId: pot.id, potTitle: pot.title })}
             activeOpacity={0.85}
             accessibilityLabel="Partager"
           >

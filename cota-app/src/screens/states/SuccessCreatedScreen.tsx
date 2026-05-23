@@ -182,7 +182,7 @@ export const SuccessCreatedScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <StatusBar barStyle="dark-content" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 130 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
         <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={styles.closeBtn} onPress={goHome}>
             <Text style={styles.closeX}>✕</Text>
@@ -238,6 +238,12 @@ export const SuccessCreatedScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* CTA */}
+          <PrimaryButton onPress={sharePrimary} style={{ marginTop: 24 }}>Partager maintenant</PrimaryButton>
+          <TouchableOpacity onPress={goHome} style={{ marginTop: 12, alignItems: 'center' }}>
+            <Text style={styles.laterText}>Plus tard</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -257,13 +263,6 @@ export const SuccessCreatedScreen = () => {
         </View>
       </Modal>
 
-      {/* Sticky CTA */}
-      <View style={[styles.cta, { paddingBottom: insets.bottom + 8 }]}>
-        <PrimaryButton onPress={sharePrimary}>Partager maintenant</PrimaryButton>
-        <TouchableOpacity onPress={goHome} style={{ marginTop: 10, alignItems: 'center' }}>
-          <Text style={styles.laterText}>Plus tard</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -329,10 +328,5 @@ const styles = StyleSheet.create({
     backgroundColor: T.field,
   },
   qrCloseText: { fontSize: 14, fontWeight: '600', color: T.ink },
-  cta: {
-    position: 'absolute', left: 0, right: 0, bottom: 0,
-    paddingHorizontal: 18, paddingTop: 12,
-    backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: T.sep,
-  },
   laterText: { fontSize: 13, fontWeight: '600', color: T.ink3 },
 });

@@ -18,7 +18,7 @@ const TIPS: [string, string, string][] = [
   ['3', 'Relancez gentiment au bout de 3 jours', 'Un petit rappel fait souvent toute la différence.'],
 ];
 
-export const EmptyPotDetail = () => {
+export const EmptyPotDetail = ({ potId, potTitle }: { potId: string; potTitle: string }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
 
@@ -118,7 +118,7 @@ export const EmptyPotDetail = () => {
       <View style={[styles.cta, { paddingBottom: insets.bottom + 8 }]}>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1.6 }}>
-            <PrimaryButton onPress={() => navigation.navigate('Share')}>↑ Partager</PrimaryButton>
+            <PrimaryButton onPress={() => navigation.navigate('Share', { potId, potTitle })}>↑ Partager</PrimaryButton>
           </View>
           <View style={{ flex: 1 }}>
             <SecondaryButton onPress={() => navigation.goBack()}>Modifier</SecondaryButton>
