@@ -169,22 +169,19 @@ export const ContributeScreen = () => {
             </View>
             <Text style={styles.addCardText}>Ajouter une carte</Text>
           </TouchableOpacity>
+
+          <PrimaryButton
+            onPress={onContribute}
+            style={{ ...styles.ctaButton, ...(!canPay && { opacity: 0.4 }) }}
+          >
+            {`Contribuer ${formatEur(Math.round(selectedAmount * 100))}`}
+          </PrimaryButton>
+          <View style={styles.secureRow}>
+            <ShieldIcon size={14} color={T.ink3} />
+            <Text style={styles.secureText}>Paiement 100% sécurisé</Text>
+          </View>
         </View>
       </ScrollView>
-
-      {/* CTA */}
-      <View style={[styles.cta, { paddingBottom: insets.bottom + 8 }]}>
-        <PrimaryButton
-          onPress={onContribute}
-          style={!canPay ? { opacity: 0.4 } : undefined}
-        >
-          {`Contribuer ${formatEur(Math.round(selectedAmount * 100))}`}
-        </PrimaryButton>
-        <View style={styles.secureRow}>
-          <ShieldIcon size={14} color={T.ink3} />
-          <Text style={styles.secureText}>Paiement 100% sécurisé</Text>
-        </View>
-      </View>
 
       {/* Add card sheet — lazy so Stripe SDK loads only on first open */}
       {cardSheetMounted && (
@@ -244,11 +241,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   addCardText: { fontSize: 15, fontWeight: '500', color: T.ink3 },
-  cta: {
-    paddingHorizontal: 20, paddingTop: 12,
-    backgroundColor: '#fff',
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: T.sep,
-  },
-  secureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 },
+  ctaButton: { marginTop: 32 },
+  secureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 },
   secureText: { fontSize: 12, color: T.ink3 },
 });
