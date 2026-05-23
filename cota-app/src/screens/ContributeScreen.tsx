@@ -1,7 +1,7 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, TextInput,
-  Modal, KeyboardAvoidingView, Platform, ActivityIndicator,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -31,10 +31,14 @@ export const ContributeScreen = () => {
   const route = useRoute<Rt>();
   const { potId } = route.params;
 
-  const [selected, setSelected] = useState<number>(50);
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customDraft, setCustomDraft] = useState('');
+  const [amountStr, setAmountStr] = useState('50');
+  const amountInputRef = useRef<TextInput>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+
+  const selectedAmount = (() => {
+    const v = parseFloat(amountStr.replace(',', '.'));
+    return Number.isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : 0;
+  })();
   const [cardSheetMounted, setCardSheetMounted] = useState(false);
   const [cardSheetVisible, setCardSheetVisible] = useState(false);
 
@@ -55,20 +59,8 @@ export const ContributeScreen = () => {
     setSelectedCardId(def.id);
   }, [cards, selectedCardId]);
 
-  const isAmountValid = Number.isFinite(selected) && selected > 0;
+  const isAmountValid = selectedAmount > 0;
   const canPay = isAmountValid && !!selectedCardId;
-
-  const openCustomAmount = () => {
-    setCustomDraft(isAmountValid && !AMOUNTS.includes(selected) ? String(selected) : '');
-    setCustomOpen(true);
-  };
-  const confirmCustomAmount = () => {
-    const cleaned = customDraft.replace(/[^\d.,]/g, '').replace(',', '.');
-    const value = parseFloat(cleaned);
-    if (!Number.isFinite(value) || value <= 0) return;
-    setSelected(Math.round(value * 100) / 100);
-    setCustomOpen(false);
-  };
 
   const openAddCard = () => {
     setCardSheetMounted(true);
@@ -79,7 +71,7 @@ export const ContributeScreen = () => {
     if (!canPay || !selectedCardId) return;
     navigation.navigate('PaymentProcessing', {
       potId,
-      amount: selected,
+      amount: selectedAmount,
       cardId: selectedCardId,
     });
   };
@@ -97,29 +89,36 @@ export const ContributeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
         <View style={{ paddingHorizontal: 20 }}>
           {/* Amount */}
           <Text style={styles.label}>MONTANT</Text>
-          <View style={styles.amountCard}>
+          <TouchableOpacity
+            style={styles.amountCard}
+            onPress={() => amountInputRef.current?.focus()}
+            activeOpacity={0.9}
+          >
             <Text style={styles.amountText}>
-              {selected}
+              {amountStr || '0'}
               <Text style={styles.amountUnit}> €</Text>
             </Text>
-          </View>
+            <TextInput
+              ref={amountInputRef}
+              style={styles.hiddenInput}
+              value={amountStr}
+              onChangeText={(t) => setAmountStr(t.replace(/[^\d.,]/g, ''))}
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+              maxLength={7}
+              caretHidden
+            />
+          </TouchableOpacity>
           <View style={styles.chipsRow}>
             {AMOUNTS.map(a => (
-              <Chip key={a} active={selected === a} onPress={() => setSelected(a)}>
+              <Chip key={a} active={selectedAmount === a} onPress={() => setAmountStr(String(a))}>
                 {`${a} €`}
               </Chip>
             ))}
-            <Chip
-              dashed
-              active={!AMOUNTS.includes(selected)}
-              onPress={openCustomAmount}
-            >
-              {AMOUNTS.includes(selected) ? 'Autre' : `${selected} €`}
-            </Chip>
           </View>
 
           {/* Payment */}
@@ -179,54 +178,13 @@ export const ContributeScreen = () => {
           onPress={onContribute}
           style={!canPay ? { opacity: 0.4 } : undefined}
         >
-          {`Contribuer ${formatEur(Math.round(selected * 100))}`}
+          {`Contribuer ${formatEur(Math.round(selectedAmount * 100))}`}
         </PrimaryButton>
         <View style={styles.secureRow}>
           <ShieldIcon size={14} color={T.ink3} />
           <Text style={styles.secureText}>Paiement 100% sécurisé</Text>
         </View>
       </View>
-
-      {/* Custom amount modal */}
-      <Modal
-        visible={customOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setCustomOpen(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.customBackdrop}
-        >
-          <View style={styles.customSheet}>
-            <Text style={styles.customTitle}>Montant libre</Text>
-            <Text style={styles.customSub}>Entrez le montant en euros.</Text>
-            <View style={styles.customInputRow}>
-              <TextInput
-                style={styles.customInput}
-                value={customDraft}
-                onChangeText={setCustomDraft}
-                placeholder="0"
-                placeholderTextColor={T.ink3}
-                keyboardType="decimal-pad"
-                inputMode="decimal"
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={confirmCustomAmount}
-              />
-              <Text style={styles.customUnit}>€</Text>
-            </View>
-            <View style={styles.customActions}>
-              <TouchableOpacity onPress={() => setCustomOpen(false)} style={styles.customCancel}>
-                <Text style={styles.customCancelText}>Annuler</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={confirmCustomAmount} style={styles.customOk}>
-                <Text style={styles.customOkText}>OK</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
       {/* Add card sheet — lazy so Stripe SDK loads only on first open */}
       {cardSheetMounted && (
@@ -257,6 +215,7 @@ const styles = StyleSheet.create({
   amountCard: { backgroundColor: T.surface, borderRadius: 20, paddingVertical: 30, alignItems: 'center' },
   amountText: { fontSize: 54, fontWeight: '700', letterSpacing: -1.5, color: T.ink },
   amountUnit: { color: T.ink3, fontWeight: '600', fontSize: 36 },
+  hiddenInput: { position: 'absolute', opacity: 0, width: '100%', height: '100%' },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   payCard: {
     backgroundColor: T.surface, borderRadius: 18, padding: 14,
@@ -292,30 +251,4 @@ const styles = StyleSheet.create({
   },
   secureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 },
   secureText: { fontSize: 12, color: T.ink3 },
-  customBackdrop: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 28,
-  },
-  customSheet: {
-    width: '100%', backgroundColor: T.surface, borderRadius: 20, padding: 22,
-  },
-  customTitle: { fontSize: 18, fontWeight: '700', color: T.ink, textAlign: 'center' },
-  customSub: { fontSize: 13, color: T.ink3, marginTop: 4, textAlign: 'center', marginBottom: 18 },
-  customInputRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: T.field, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
-  },
-  customInput: { flex: 1, fontSize: 22, fontWeight: '700', color: T.ink },
-  customUnit: { fontSize: 20, fontWeight: '600', color: T.ink3 },
-  customActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  customCancel: {
-    flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: T.field,
-    alignItems: 'center',
-  },
-  customCancelText: { fontSize: 15, fontWeight: '600', color: T.ink2 },
-  customOk: {
-    flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: T.brand,
-    alignItems: 'center',
-  },
-  customOkText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

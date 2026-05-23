@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -23,7 +23,12 @@ const Section = ({ children }: { children: React.ReactNode }) => (
 export const PublicContributeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
-  const [amount, setAmount] = useState(50);
+  const [amountStr, setAmountStr] = useState('50');
+  const amountInputRef = useRef<TextInput>(null);
+  const amount = (() => {
+    const v = parseFloat(amountStr.replace(',', '.'));
+    return Number.isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : 0;
+  })();
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -45,22 +50,33 @@ export const PublicContributeScreen = () => {
           <StepIndicator step={1} />
 
           <Section>MONTANT</Section>
-          <View style={styles.amountCard}>
+          <TouchableOpacity
+            style={styles.amountCard}
+            onPress={() => amountInputRef.current?.focus()}
+            activeOpacity={0.9}
+          >
             <Text style={styles.amountText}>
-              {amount}
+              {amountStr || '0'}
               <Text style={{ color: T.ink3, fontWeight: '600' }}> €</Text>
             </Text>
             <Text style={styles.amountSub}>Frais de service : 0 € · 100% pour Alexandre</Text>
-          </View>
+            <TextInput
+              ref={amountInputRef}
+              style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%' }}
+              value={amountStr}
+              onChangeText={(t) => setAmountStr(t.replace(/[^\d.,]/g, ''))}
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+              maxLength={7}
+              caretHidden
+            />
+          </TouchableOpacity>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
             {AMOUNTS.map((a) => (
-              <Chip key={a} active={amount === a} onPress={() => setAmount(a)}>
+              <Chip key={a} active={amount === a} onPress={() => setAmountStr(String(a))}>
                 {a} €
               </Chip>
             ))}
-            <Chip dashed onPress={() => {}}>
-              Autre
-            </Chip>
           </View>
 
           <Section>DE VOTRE PART</Section>
