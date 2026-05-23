@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import {
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar,
+  Alert, Modal, Pressable, Share,
+} from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
@@ -8,10 +12,11 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { Avatar } from '../components/Avatar';
 import { PrimaryButton, SecondaryButton } from '../components/Button';
-import { BackIcon, DotsIcon, ShareIcon } from '../icons/Icons';
+import { BackIcon, CopyIcon, DotsIcon, ShareIcon } from '../icons/Icons';
 import { HomeStackParamList } from '../navigation';
 import { DetailSkeleton } from './states/DetailSkeleton';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
 import { formatEur } from '../data/hooks';
 
 type Nav = StackNavigationProp<HomeStackParamList>;
@@ -25,6 +30,8 @@ interface PotRow {
   raised_amount_cents: number;
   created_at: string;
   deadline: string | null;
+  owner_id: string;
+  status: 'active' | 'closed' | 'archived';
 }
 
 interface ContribRow {
@@ -71,15 +78,17 @@ export const DetailScreen = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
   const { potId } = route.params;
+  const { user } = useAuth();
 
   const [pot, setPot] = useState<PotRow | null | undefined>(undefined);
   const [contributions, setContributions] = useState<ContribRow[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const load = React.useCallback(async () => {
     const [{ data: potData }, { data: contribsData }] = await Promise.all([
       supabase
         .from('pots')
-        .select('id, title, description, goal_amount_cents, raised_amount_cents, created_at, deadline')
+        .select('id, title, description, goal_amount_cents, raised_amount_cents, created_at, deadline, owner_id, status')
         .eq('id', potId)
         .maybeSingle(),
       supabase
@@ -161,6 +170,85 @@ export const DetailScreen = () => {
     return 'C';
   };
 
+  // Each menu action runs *after* the popover closes (small delay so the
+  // dismiss animation doesn't fight with a follow-up Alert / Share sheet).
+  const runMenuAction = (fn: () => void) => {
+    setMenuOpen(false);
+    setTimeout(fn, 120);
+  };
+
+  const handleCopyLink = () => runMenuAction(async () => {
+    if (!pot) return;
+    await Clipboard.setStringAsync(`https://cota.app/pot/${pot.id}`);
+    Alert.alert('Lien copié', `https://cota.app/pot/${pot.id}`);
+  });
+
+  const handleShare = () => runMenuAction(async () => {
+    if (!pot) return;
+    const url = `https://cota.app/pot/${pot.id}`;
+    try {
+      await Share.share({
+        message: `Soutiens la cagnotte « ${pot.title} » sur Cota : ${url}`,
+        url,
+      });
+    } catch { /* user cancelled */ }
+  });
+
+  const handleClose = () => runMenuAction(() => {
+    if (!pot) return;
+    Alert.alert(
+      'Fermer la cagnotte',
+      "Plus aucune contribution ne pourra être reçue. Vous pourrez la rouvrir à tout moment.",
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Fermer',
+          onPress: async () => {
+            const { error } = await supabase
+              .from('pots')
+              .update({ status: 'closed' })
+              .eq('id', pot.id);
+            if (error) Alert.alert('Erreur', error.message);
+            else load();
+          },
+        },
+      ],
+    );
+  });
+
+  const handleReopen = () => runMenuAction(async () => {
+    if (!pot) return;
+    const { error } = await supabase
+      .from('pots')
+      .update({ status: 'active' })
+      .eq('id', pot.id);
+    if (error) Alert.alert('Erreur', error.message);
+    else load();
+  });
+
+  const handleArchive = () => runMenuAction(() => {
+    if (!pot) return;
+    Alert.alert(
+      'Archiver la cagnotte',
+      "Elle disparaîtra de vos listes. Les contributions déjà versées sont conservées.",
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Archiver',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase
+              .from('pots')
+              .update({ status: 'archived' })
+              .eq('id', pot.id);
+            if (error) Alert.alert('Erreur', error.message);
+            else navigation.goBack();
+          },
+        },
+      ],
+    );
+  });
+
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <StatusBar barStyle="light-content" />
@@ -182,9 +270,17 @@ export const DetailScreen = () => {
             </TouchableOpacity>
             <View style={{ flex: 1, marginHorizontal: 12, alignItems: 'center' }}>
               <Text style={styles.navTitle} numberOfLines={1}>{pot.title}</Text>
-              <Text style={styles.navSub}>Créée le {createdLabel}</Text>
+              <Text style={styles.navSub}>
+                {`Créée le ${createdLabel}`}
+                {pot.status === 'closed' ? ' · Fermée' : ''}
+                {pot.status === 'archived' ? ' · Archivée' : ''}
+              </Text>
             </View>
-            <TouchableOpacity style={styles.iconBtn}>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => setMenuOpen(true)}
+              accessibilityLabel="Plus d'actions"
+            >
               <DotsIcon size={22} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -283,8 +379,17 @@ export const DetailScreen = () => {
             compact icon button on the right. */}
         <View style={styles.actionsRow}>
           <View style={{ flex: 1 }}>
-            <PrimaryButton onPress={() => navigation.navigate('Contribute', { potId: pot.id })}>
-              Contribuer
+            <PrimaryButton
+              onPress={() => {
+                if (pot.status !== 'active') {
+                  Alert.alert('Cagnotte fermée', "Cette cagnotte n'accepte plus de contributions.");
+                  return;
+                }
+                navigation.navigate('Contribute', { potId: pot.id });
+              }}
+              style={pot.status !== 'active' ? { opacity: 0.4 } : undefined}
+            >
+              {pot.status === 'active' ? 'Contribuer' : 'Cagnotte fermée'}
             </PrimaryButton>
           </View>
           <TouchableOpacity
@@ -297,9 +402,59 @@ export const DetailScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Action menu — popover anchored visually under the ⋯ button. The
+          transparent Modal lets us dismiss on outside-tap while keeping the
+          card pinned to the dots' position. */}
+      <Modal
+        visible={menuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuOpen(false)}
+      >
+        <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)}>
+          <Pressable
+            style={[styles.menuCard, { top: insets.top + 56 }]}
+            onPress={() => { /* swallow taps so they don't dismiss the modal */ }}
+          >
+            <MenuItem icon={<CopyIcon size={16} color={T.ink2} />} label="Copier le lien" onPress={handleCopyLink} />
+            <MenuSep />
+            <MenuItem icon={<ShareIcon size={16} color={T.ink2} />} label="Partager…" onPress={handleShare} />
+
+            {user?.id === pot.owner_id && (
+              <>
+                <MenuSep />
+                {pot.status === 'active' ? (
+                  <MenuItem label="Fermer la cagnotte" onPress={handleClose} />
+                ) : pot.status === 'closed' ? (
+                  <MenuItem label="Rouvrir la cagnotte" onPress={handleReopen} />
+                ) : null}
+                <MenuSep />
+                <MenuItem label="Archiver la cagnotte" destructive onPress={handleArchive} />
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
+
+const MenuItem = ({
+  icon, label, destructive, onPress,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  destructive?: boolean;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity onPress={onPress} activeOpacity={0.6} style={styles.menuItem}>
+    {icon ? <View style={{ width: 22, alignItems: 'center' }}>{icon}</View> : <View style={{ width: 22 }} />}
+    <Text style={[styles.menuLabel, destructive && { color: T.danger }]}>{label}</Text>
+  </TouchableOpacity>
+);
+
+const MenuSep = () => <View style={styles.menuSep} />;
 
 const styles = StyleSheet.create({
   headerGrad: { borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingBottom: 28, paddingHorizontal: 20 },
@@ -335,6 +490,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 10, alignItems: 'stretch',
     marginHorizontal: 20, marginTop: 4,
   },
+  menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.18)' },
+  menuCard: {
+    position: 'absolute',
+    right: 16,
+    minWidth: 240,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  menuItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 13,
+  },
+  menuLabel: { fontSize: 15, fontWeight: '500', color: T.ink, flex: 1 },
+  menuSep: { height: StyleSheet.hairlineWidth, backgroundColor: T.sep, marginLeft: 50 },
   shareIconBtn: {
     width: 56,
     borderRadius: 16,
