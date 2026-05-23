@@ -42,7 +42,7 @@ export const CreateCategoryScreen = () => {
         <View style={[styles.progressSeg, { backgroundColor: T.ink4 }]} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}>
         <Text style={styles.bigTitle}>Quelle est{'\n'}l'occasion ?</Text>
         <Text style={styles.bigSub}>Choisissez une catégorie pour démarrer.</Text>
 

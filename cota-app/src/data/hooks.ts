@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import type { ThumbType, Tone } from './types';
@@ -242,6 +242,42 @@ export function useNotifications() {
   }, [user]);
 
   return { groups, loading: groups === null };
+}
+
+export interface PaymentMethod {
+  id: string;
+  stripe_payment_method_id: string;
+  brand: string | null;
+  last4: string | null;
+  exp_month: number | null;
+  exp_year: number | null;
+  is_default: boolean;
+}
+
+export function usePaymentMethods() {
+  const { user } = useAuth();
+  const [cards, setCards] = useState<PaymentMethod[] | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!user) {
+      setCards([]);
+      return;
+    }
+    const { data } = await supabase
+      .from('payment_methods')
+      .select('id, stripe_payment_method_id, brand, last4, exp_month, exp_year, is_default')
+      .eq('user_id', user.id)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: false });
+    setCards((data as PaymentMethod[] | null) ?? []);
+  }, [user]);
+
+  useEffect(() => {
+    setCards(null);
+    refresh();
+  }, [refresh]);
+
+  return { cards, loading: cards === null, refresh };
 }
 
 export function useUserStats() {

@@ -1,22 +1,70 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import React, { Suspense, lazy, useState } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Alert, ActivityIndicator,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { T } from '../theme';
-import { CardIcon, ChevRIcon, PlusIcon, ShieldIcon } from '../icons/Icons';
+import { CardIcon, PlusIcon, ShieldIcon } from '../icons/Icons';
+import { usePaymentMethods, PaymentMethod } from '../data/hooks';
+import { callStripe } from '../lib/stripe';
+
+// Lazily loaded so the native Stripe SDK is only evaluated when the user
+// actually opens the "add card" sheet — keeps the app runnable in Expo Go.
+const AddCardSheet = lazy(() => import('../components/AddCardSheet'));
 
 const TABS = ['Historique', 'Cartes'] as const;
 type Tab = typeof TABS[number];
 
+const brandLabel = (brand: string | null): string =>
+  brand ? brand.charAt(0).toUpperCase() + brand.slice(1) : 'Carte';
+
+const expLabel = (card: PaymentMethod): string =>
+  card.exp_month && card.exp_year
+    ? `${String(card.exp_month).padStart(2, '0')}/${String(card.exp_year).slice(-2)}`
+    : '—';
+
 export const PaymentScreen = () => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('Historique');
+  const { cards, loading, refresh } = usePaymentMethods();
 
-  // TODO: hydrate from contributions + payment_methods once flows are wired.
+  const [sheetMounted, setSheetMounted] = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
+
+  // TODO: hydrate from contributions once payment flows are wired.
   const transactions: { section: string; items: never[] }[] = [];
-  const cards: never[] = [];
-
   const totalIn = 0;
   const totalOut = 0;
+
+  const openAddCard = () => {
+    setSheetMounted(true);
+    setSheetVisible(true);
+  };
+
+  const handleDelete = (card: PaymentMethod) => {
+    Alert.alert(
+      'Supprimer la carte',
+      `Supprimer la carte ${brandLabel(card.brand)} •••• ${card.last4 ?? ''} ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await callStripe({
+                action: 'delete-payment-method',
+                paymentMethodId: card.stripe_payment_method_id,
+              });
+              refresh();
+            } catch (e) {
+              Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec de la suppression.');
+            }
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -68,13 +116,40 @@ export const PaymentScreen = () => {
           <View style={{ paddingHorizontal: 20 }}>
             <Text style={styles.sectionLabel}>Mes cartes</Text>
 
-            {cards.length === 0 && (
-              <View style={[styles.emptyCard]}>
+            {loading ? (
+              <View style={styles.emptyCard}>
+                <ActivityIndicator color={T.brand} />
+              </View>
+            ) : cards && cards.length === 0 ? (
+              <View style={styles.emptyCard}>
                 <Text style={styles.emptySub}>Aucune carte enregistrée.</Text>
               </View>
+            ) : (
+              cards?.map(card => (
+                <View key={card.id} style={styles.cardRow}>
+                  <View style={styles.cardBrandIcon}>
+                    <CardIcon size={18} color={T.brand} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardLabel}>
+                      {brandLabel(card.brand)} •••• {card.last4 ?? '••••'}
+                    </Text>
+                    <Text style={styles.cardSub}>
+                      Expire {expLabel(card)}
+                      {card.is_default ? ' · Par défaut' : ''}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(card)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Text style={styles.cardDelete}>Supprimer</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
             )}
 
-            <TouchableOpacity style={styles.addCard}>
+            <TouchableOpacity style={styles.addCard} onPress={openAddCard}>
               <View style={styles.addCardIcon}>
                 <PlusIcon size={14} color={T.ink3} />
               </View>
@@ -88,6 +163,19 @@ export const PaymentScreen = () => {
           </View>
         )}
       </ScrollView>
+
+      {sheetMounted && (
+        <Suspense fallback={null}>
+          <AddCardSheet
+            visible={sheetVisible}
+            onClose={() => setSheetVisible(false)}
+            onSaved={() => {
+              setSheetVisible(false);
+              refresh();
+            }}
+          />
+        </Suspense>
+      )}
     </View>
   );
 };
@@ -117,22 +205,23 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 0.8,
     marginBottom: 8, marginTop: 4,
   },
-  txGroup: {
-    backgroundColor: T.surface, borderRadius: 18, overflow: 'hidden',
-    borderWidth: 1, borderColor: T.sep, marginBottom: 8,
+  cardRow: {
+    backgroundColor: T.surface, borderRadius: 16, padding: 14, marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: T.sep,
   },
-  txRow: { flexDirection: 'row', alignItems: 'center', padding: 14 },
-  txDot: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  txLabel: { fontSize: 15, fontWeight: '600', color: T.ink },
-  txSub: { fontSize: 12, color: T.ink3, marginTop: 1 },
-  txAmount: { fontSize: 15, fontWeight: '700' },
-  txTime: { fontSize: 11, color: T.ink4, marginTop: 2 },
-  sep: { height: 0.5, backgroundColor: T.sep, marginLeft: 66 },
+  cardBrandIcon: {
+    width: 40, height: 40, borderRadius: 12, backgroundColor: T.brandSoft,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  cardLabel: { fontSize: 15, fontWeight: '600', color: T.ink },
+  cardSub: { fontSize: 12, color: T.ink3, marginTop: 2 },
+  cardDelete: { fontSize: 13, fontWeight: '600', color: T.danger },
   addCard: {
     backgroundColor: T.surface, borderRadius: 18, padding: 16,
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderWidth: 1, borderColor: T.ink4, borderStyle: 'dashed',
-    marginBottom: 16,
+    marginTop: 4, marginBottom: 16,
   },
   addCardIcon: {
     width: 34, height: 22, borderRadius: 6,
