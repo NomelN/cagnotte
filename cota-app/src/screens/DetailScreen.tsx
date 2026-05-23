@@ -166,7 +166,9 @@ export const DetailScreen = () => {
       <StatusBar barStyle="light-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
+        bounces={false}
+        overScrollMode="never"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
         {/* Green header */}
         <LinearGradient
@@ -275,19 +277,26 @@ export const DetailScreen = () => {
             </>
           )}
         </View>
-      </ScrollView>
 
-      {/* CTA — sticky, equal-weight buttons, clean white background */}
-      <View style={[styles.cta, { paddingBottom: insets.bottom + 12 }]}>
-        <View style={styles.ctaRow}>
+        {/* Actions — in-flow so the page scrolls naturally instead of having
+            a heavy sticky footer. Contribuer dominates; Share collapses to a
+            compact icon button on the right. */}
+        <View style={styles.actionsRow}>
           <View style={{ flex: 1 }}>
-            <PrimaryButton onPress={() => navigation.navigate('Contribute', { potId: pot.id })}>Contribuer</PrimaryButton>
+            <PrimaryButton onPress={() => navigation.navigate('Contribute', { potId: pot.id })}>
+              Contribuer
+            </PrimaryButton>
           </View>
-          <View style={{ flex: 1 }}>
-            <SecondaryButton onPress={() => navigation.navigate('Share')}>Partager</SecondaryButton>
-          </View>
+          <TouchableOpacity
+            style={styles.shareIconBtn}
+            onPress={() => navigation.navigate('Share')}
+            activeOpacity={0.85}
+            accessibilityLabel="Partager"
+          >
+            <ShareIcon size={20} color={T.brand} />
+          </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -322,10 +331,15 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: T.ink, textAlign: 'center' },
   emptySub: { fontSize: 13, color: T.ink3, marginTop: 6, lineHeight: 18, textAlign: 'center' },
-  cta: {
-    paddingHorizontal: 20, paddingTop: 14,
-    backgroundColor: '#fff',
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: T.sep,
+  actionsRow: {
+    flexDirection: 'row', gap: 10, alignItems: 'stretch',
+    marginHorizontal: 20, marginTop: 4,
   },
-  ctaRow: { flexDirection: 'row', gap: 12 },
+  shareIconBtn: {
+    width: 56,
+    borderRadius: 16,
+    backgroundColor: T.brandSoft,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(30,157,90,0.18)',
+  },
 });

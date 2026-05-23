@@ -45,12 +45,12 @@ export const HomeScreen = () => {
             <Text style={styles.greetName}>{firstName}</Text>
           </View>
           <TouchableOpacity
-            style={[styles.iconCircle, { marginRight: 10 }]}
+            style={[styles.iconCircle, styles.iconCirclePrimary, { marginRight: 10 }]}
             onPress={() => navigation.navigate('CreateCategory')}
             accessibilityLabel="Créer une cagnotte"
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
-            <PlusIcon size={20} color={T.brand} />
+            <PlusIcon size={20} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconCircle}>
             <BellIcon size={22} color={T.ink3} />
@@ -140,6 +140,13 @@ const styles = StyleSheet.create({
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4,
+  },
+  iconCirclePrimary: {
+    backgroundColor: T.brand,
+    shadowColor: T.brand,
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
   },
   heroCard: {
     marginHorizontal: 20, borderRadius: 24,

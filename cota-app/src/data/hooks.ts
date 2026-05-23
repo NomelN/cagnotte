@@ -277,6 +277,203 @@ export function usePaymentMethods() {
   return { cards, loading: cards === null, refresh };
 }
 
+// ─── Payments history ─────────────────────────────────────────────────
+export interface PaymentEntry {
+  id: string;
+  direction: 'in' | 'out';
+  amountCents: number;
+  potId: string;
+  potTitle: string;
+  counterpartyLabel: string;
+  created_at: string;
+  time: string;
+}
+
+export interface PaymentSection {
+  section: string;
+  items: PaymentEntry[];
+}
+
+export interface PaymentSummary {
+  receivedThisMonthCents: number;
+  contributedThisMonthCents: number;
+}
+
+const formatPersonName = (
+  first: string | null | undefined,
+  last: string | null | undefined,
+): string => {
+  const f = first?.trim();
+  const l = last?.trim();
+  if (f && l) return `${f} ${l.charAt(0).toUpperCase()}.`;
+  if (f) return f;
+  if (l) return l;
+  return '';
+};
+
+export function usePaymentHistory() {
+  const { user } = useAuth();
+  const [groups, setGroups] = useState<PaymentSection[] | null>(null);
+  const [summary, setSummary] = useState<PaymentSummary>({
+    receivedThisMonthCents: 0,
+    contributedThisMonthCents: 0,
+  });
+
+  const refresh = useCallback(async () => {
+    if (!user) {
+      setGroups([]);
+      setSummary({ receivedThisMonthCents: 0, contributedThisMonthCents: 0 });
+      return;
+    }
+
+    // Pots the user owns — needed to scope incoming contributions.
+    const { data: owned } = await supabase
+      .from('pots')
+      .select('id, title, owner_id')
+      .eq('owner_id', user.id);
+    const ownedIds = (owned ?? []).map(p => p.id);
+    const ownedById = Object.fromEntries(
+      (owned ?? []).map(p => [p.id, { title: p.title }]),
+    );
+
+    // Outgoing: contributions I made. Pull pot.title and pot.owner_id so we
+    // can label the counterparty ("vers <owner first name>").
+    const outgoingPromise = supabase
+      .from('contributions')
+      .select('id, amount_cents, created_at, succeeded_at, pot:pots(id, title, owner_id)')
+      .eq('contributor_id', user.id)
+      .eq('status', 'succeeded')
+      .order('created_at', { ascending: false });
+
+    // Incoming: contributions to pots I own. Exclude self-contributions
+    // (where I'm both contributor and pot owner) since those already appear in
+    // the outgoing list — listing them twice produced duplicate React keys.
+    const incomingPromise = ownedIds.length === 0
+      ? Promise.resolve({ data: [] as any[] })
+      : supabase
+          .from('contributions')
+          .select('id, amount_cents, created_at, succeeded_at, contributor_id, is_anonymous, pot_id')
+          .in('pot_id', ownedIds)
+          .eq('status', 'succeeded')
+          .neq('contributor_id', user.id)
+          .order('created_at', { ascending: false });
+
+    const [outRes, inRes] = await Promise.all([outgoingPromise, incomingPromise]);
+    // PostgREST's embedded resource typing comes back as an array even for
+    // single-FK relations, so we cast through unknown and normalise below.
+    const outRowsRaw = (outRes.data ?? []) as unknown as Array<{
+      id: string;
+      amount_cents: number;
+      created_at: string;
+      pot: { id: string; title: string; owner_id: string } |
+           { id: string; title: string; owner_id: string }[] | null;
+    }>;
+    const outRows = outRowsRaw.map(r => ({
+      ...r,
+      pot: Array.isArray(r.pot) ? (r.pot[0] ?? null) : r.pot,
+    }));
+    const inRows = (inRes.data ?? []) as Array<{
+      id: string;
+      amount_cents: number;
+      created_at: string;
+      contributor_id: string | null;
+      is_anonymous: boolean;
+      pot_id: string;
+    }>;
+
+    // Resolve profile names for every distinct counterparty in a single
+    // batched query (one for pot owners, one for contributors).
+    const ownerIds = Array.from(new Set(outRows.map(r => r.pot?.owner_id).filter(Boolean) as string[]));
+    const contribIds = Array.from(new Set(
+      inRows.filter(r => !r.is_anonymous && r.contributor_id).map(r => r.contributor_id!) as string[],
+    ));
+    const allProfileIds = Array.from(new Set([...ownerIds, ...contribIds]));
+
+    let profilesById: Record<string, { first_name: string | null; last_name: string | null }> = {};
+    if (allProfileIds.length) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', allProfileIds);
+      profilesById = Object.fromEntries(
+        (profs ?? []).map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }]),
+      );
+    }
+
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartMs = monthStart.getTime();
+
+    let received = 0;
+    let contributed = 0;
+
+    const outEntries: PaymentEntry[] = outRows.map(r => {
+      const owner = r.pot?.owner_id ? profilesById[r.pot.owner_id] : null;
+      const ownerName = formatPersonName(owner?.first_name, owner?.last_name);
+      if (new Date(r.created_at).getTime() >= monthStartMs) contributed += r.amount_cents;
+      return {
+        id: r.id,
+        direction: 'out',
+        amountCents: r.amount_cents,
+        potId: r.pot?.id ?? '',
+        potTitle: r.pot?.title ?? 'Cagnotte',
+        counterpartyLabel: ownerName ? `vers ${ownerName}` : '',
+        created_at: r.created_at,
+        time: timeOf(r.created_at),
+      };
+    });
+
+    const inEntries: PaymentEntry[] = inRows.map(r => {
+      const isAnon = r.is_anonymous || !r.contributor_id;
+      const prof = isAnon ? null : profilesById[r.contributor_id!];
+      const contribName = isAnon ? 'Anonyme' : formatPersonName(prof?.first_name, prof?.last_name) || 'Contributeur';
+      const potTitle = ownedById[r.pot_id]?.title ?? 'Cagnotte';
+      if (new Date(r.created_at).getTime() >= monthStartMs) received += r.amount_cents;
+      return {
+        id: r.id,
+        direction: 'in',
+        amountCents: r.amount_cents,
+        potId: r.pot_id,
+        potTitle,
+        counterpartyLabel: contribName,
+        created_at: r.created_at,
+        time: timeOf(r.created_at),
+      };
+    });
+
+    // Merge + dedupe by id (defensive — the .neq filter on incoming already
+    // prevents the most common case, but if anything else ever re-emits the
+    // same row we don't want duplicate React keys downstream).
+    const seen = new Set<string>();
+    const merged: PaymentEntry[] = [];
+    for (const e of [...outEntries, ...inEntries]) {
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
+      merged.push(e);
+    }
+    const all = merged.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+    const grouped = new Map<string, PaymentEntry[]>();
+    for (const e of all) {
+      const s = sectionFor(e.created_at);
+      const list = grouped.get(s) ?? [];
+      list.push(e);
+      grouped.set(s, list);
+    }
+    setGroups(Array.from(grouped.entries()).map(([section, items]) => ({ section, items })));
+    setSummary({ receivedThisMonthCents: received, contributedThisMonthCents: contributed });
+  }, [user]);
+
+  useEffect(() => {
+    setGroups(null);
+    refresh();
+  }, [refresh]);
+
+  return { groups, summary, loading: groups === null, refresh };
+}
+
 export function useUserStats() {
   const { user } = useAuth();
   const [stats, setStats] = useState<{ pots: number; contributions: number; raisedCents: number } | null>(null);
