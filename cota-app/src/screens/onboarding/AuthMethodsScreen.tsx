@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../../theme';
-import { BackIcon, CotaMark, AppleIcon, GoogleIcon, FacebookIcon, MailIcon } from '../../icons/Icons';
+import { BackIcon, CotaMark, GoogleIcon, FacebookIcon, MailIcon } from '../../icons/Icons';
 import { OnboardingStackParamList } from '../../navigation';
 import { useAuth } from '../../lib/auth';
 
@@ -40,23 +40,9 @@ export const AuthMethodsScreen = () => {
   const mode = route.params?.mode ?? 'signup';
   const isLogin = mode === 'login';
 
-  const { signInWithApple, signInWithGoogle, signInWithFacebook } = useAuth();
-  const [loadingApple, setLoadingApple] = useState(false);
+  const { signInWithGoogle, signInWithFacebook } = useAuth();
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingFacebook, setLoadingFacebook] = useState(false);
-
-  const handleApple = async () => {
-    setLoadingApple(true);
-    try {
-      await signInWithApple();
-    } catch (err: any) {
-      if (err?.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Apple Sign-In', err?.message ?? 'Connexion Apple impossible');
-      }
-    } finally {
-      setLoadingApple(false);
-    }
-  };
 
   const handleGoogle = async () => {
     setLoadingGoogle(true);
@@ -101,15 +87,6 @@ export const AuthMethodsScreen = () => {
       </View>
 
       <View style={styles.methods}>
-        {Platform.OS === 'ios' && (
-          <Method
-            bg="#000" fg="#fff"
-            icon={<AppleIcon size={20} color="#fff" />}
-            label="Continuer avec Apple"
-            loading={loadingApple}
-            onPress={handleApple}
-          />
-        )}
         <Method
           bg="#fff" fg={T.ink} border
           icon={<GoogleIcon size={20} />}

@@ -163,7 +163,7 @@ export const SuccessContributionScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <StatusBar barStyle="light-content" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
         {/* Hero band */}
         <LinearGradient
           colors={[T.brand, T.brandDeep]}
@@ -256,11 +256,11 @@ export const SuccessContributionScreen = () => {
             ))}
           </View>
         </View>
-      </ScrollView>
 
-      <View style={[styles.cta, { paddingBottom: insets.bottom + 8 }]}>
-        <PrimaryButton onPress={goToPot}>Retour à la cagnotte</PrimaryButton>
-      </View>
+        <View style={{ paddingHorizontal: 18, paddingTop: 24 }}>
+          <PrimaryButton onPress={goToPot}>Retour à la cagnotte</PrimaryButton>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -330,9 +330,4 @@ const styles = StyleSheet.create({
   receiptRowBorder: { borderBottomWidth: 0.5, borderBottomColor: T.sep },
   receiptKey: { fontSize: 13, color: T.ink3 },
   receiptValue: { fontSize: 14, fontWeight: '600', color: T.ink, flexShrink: 1, textAlign: 'right' },
-  cta: {
-    position: 'absolute', left: 0, right: 0, bottom: 0,
-    paddingHorizontal: 18, paddingTop: 12,
-    backgroundColor: '#fff', borderTopWidth: 0.5, borderTopColor: T.sep,
-  },
 });

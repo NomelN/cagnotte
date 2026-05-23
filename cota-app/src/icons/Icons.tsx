@@ -325,3 +325,10 @@ export const KeyIcon = ({ size = 24, color = '#1E9D5A' }: IconProps) => (
     <Path d="M13 12h7.5M17.5 10v4" stroke={color} strokeWidth="1.7" strokeLinecap="round"/>
   </Svg>
 );
+
+export const EditIcon = ({ size = 24, color = T.ink2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M4 20h4l10.5-10.5a2.83 2.83 0 0 0-4-4L4 16v4z" stroke={color} strokeWidth="1.7" strokeLinejoin="round"/>
+    <Path d="M14.5 5.5l4 4" stroke={color} strokeWidth="1.7" strokeLinecap="round"/>
+  </Svg>
+);

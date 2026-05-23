@@ -12,6 +12,7 @@ import { ContributeScreen } from '../screens/ContributeScreen';
 import { CreateCategoryScreen } from '../screens/CreateCategoryScreen';
 import { CreateDetailsScreen } from '../screens/CreateDetailsScreen';
 import { ShareScreen } from '../screens/ShareScreen';
+import { EditPotScreen } from '../screens/EditPotScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { PotsScreen } from '../screens/PotsScreen';
 import { PaymentScreen } from '../screens/PaymentScreen';
@@ -45,6 +46,7 @@ export type HomeStackParamList = {
   CreateCategory: undefined;
   CreateDetails: { category: string };
   Share: { potId: string; potTitle: string };
+  EditPot: { potId: string };
   Notifications: undefined;
   PaymentProcessing: { potId: string; amount: number; cardId: string };
   SuccessContribution: { potId: string; amount: number; contributionId: string; cardId: string };
@@ -107,6 +109,7 @@ function HomeStackNavigator() {
       <HomeStack.Screen name="CreateCategory" component={CreateCategoryScreen} />
       <HomeStack.Screen name="CreateDetails" component={CreateDetailsScreen} />
       <HomeStack.Screen name="Share" component={ShareScreen} />
+      <HomeStack.Screen name="EditPot" component={EditPotScreen} />
       <HomeStack.Screen
         name="PaymentProcessing"
         component={PaymentProcessingScreen}
