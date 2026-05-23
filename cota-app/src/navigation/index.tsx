@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, ActivityIndicator, AppState } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { CustomTabBar } from '../components/TabBar';
@@ -18,6 +18,8 @@ import { PaymentScreen } from '../screens/PaymentScreen';
 import { PaymentMethodsScreen } from '../screens/PaymentMethodsScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { SecurityScreen } from '../screens/SecurityScreen';
+import { LockScreen } from '../screens/LockScreen';
+import { isBiometricEnabled } from '../lib/biometrics';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
@@ -191,8 +193,46 @@ function SplashScreen() {
 
 export function RootNavigator() {
   const { session, loading } = useAuth();
+  const [locked, setLocked] = useState(false);
+  const appState = useRef(AppState.currentState);
+  const justUnlocked = useRef(false);
+
+  // On mount: lock if biometric is enabled and user is logged in
+  useEffect(() => {
+    if (!session) return;
+    isBiometricEnabled().then(enabled => {
+      if (enabled) setLocked(true);
+    });
+  }, [session]);
+
+  // On foreground return: re-lock — but skip the first 'active' event right
+  // after an unlock (Face ID dialog itself triggers inactive → active)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async nextState => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        if (justUnlocked.current) {
+          justUnlocked.current = false;
+        } else {
+          if (!session) return;
+          const enabled = await isBiometricEnabled();
+          if (enabled) setLocked(true);
+        }
+      }
+      appState.current = nextState;
+    });
+    return () => sub.remove();
+  }, [session]);
+
+  const handleUnlock = () => {
+    justUnlocked.current = true;
+    setLocked(false);
+  };
 
   if (loading) return <SplashScreen />;
+
+  if (locked && session) {
+    return <LockScreen onUnlock={handleUnlock} />;
+  }
 
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
