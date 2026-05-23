@@ -10,6 +10,7 @@ import {
   BellIcon, PlusIcon, GiftIcon, PlaneIcon, BabyIcon, HeartIcon, HandIcon,
 } from '../../icons/Icons';
 import { HomeStackParamList } from '../../navigation';
+import { useProfile } from '../../data/hooks';
 
 type Nav = StackNavigationProp<HomeStackParamList>;
 
@@ -44,6 +45,8 @@ const EmptyPotIllustration = () => (
 export const EmptyHome = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
+  const { profile } = useProfile();
+  const firstName = profile?.first_name ?? '';
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -53,7 +56,7 @@ export const EmptyHome = () => {
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.greetSmall}>Bonjour,</Text>
-            <Text style={styles.greetName}>Alexandre</Text>
+            <Text style={styles.greetName}>{firstName}</Text>
           </View>
           <TouchableOpacity style={styles.iconCircle}>
             <BellIcon size={22} color={T.ink3} />

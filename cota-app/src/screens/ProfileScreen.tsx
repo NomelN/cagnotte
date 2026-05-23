@@ -1,20 +1,30 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { Avatar } from '../components/Avatar';
 import { BellIcon, CameraIcon, ChevRIcon, IdCardIcon, CardIcon, ShieldIcon, GearIcon, HelpIcon, LogoutIcon } from '../icons/Icons';
+import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabase';
+import { uploadImage } from '../lib/uploadImage';
+import { useUserStats, usePaymentMethods, formatEur } from '../data/hooks';
+import { ProfileStackParamList, RootStackParamList } from '../navigation';
 
-const Row = ({ icon, title, sub, danger, last }: { icon: React.ReactNode; title: string; sub?: string; danger?: boolean; last?: boolean }) => (
+const Row = ({ icon, title, sub, danger, last, onPress }: {
+  icon: React.ReactNode; title: string; sub?: string; danger?: boolean; last?: boolean; onPress?: () => void;
+}) => (
   <>
-    <View style={styles.row}>
+    <TouchableOpacity activeOpacity={onPress ? 0.7 : 1} onPress={onPress} style={styles.row}>
       <View style={[styles.rowIcon, danger && styles.rowIconDanger]}>{icon}</View>
       <View style={{ flex: 1, marginLeft: 14 }}>
         <Text style={[styles.rowTitle, danger && { color: T.danger }]}>{title}</Text>
         {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
       </View>
       {!danger && <ChevRIcon size={14} color={T.ink4} />}
-    </View>
+    </TouchableOpacity>
     {!last && <View style={styles.rowSep} />}
   </>
 );
@@ -26,8 +36,107 @@ const Group = ({ header, children }: { header: string; children: React.ReactNode
   </>
 );
 
+type RootNav = StackNavigationProp<RootStackParamList>;
+type Nav = StackNavigationProp<ProfileStackParamList, 'ProfileMain'>;
+
+const brandLabel = (b: string | null) =>
+  b ? b.charAt(0).toUpperCase() + b.slice(1) : 'Carte';
+
 export const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
+  const { user, signOut } = useAuth();
+  const navigation = useNavigation<Nav>();
+  const { stats } = useUserStats();
+  const { cards, refresh: refreshCards } = usePaymentMethods();
+
+  // Refresh card count when returning from PaymentMethods (e.g. after adding
+  // or deleting one) so the row subtitle stays in sync.
+  useFocusEffect(useCallback(() => { refreshCards(); }, [refreshCards]));
+
+  const paymentSubtitle: string = !cards
+    ? 'Chargement…'
+    : cards.length === 0
+      ? 'Aucune carte enregistrée'
+      : cards.length === 1
+        ? `${brandLabel(cards[0].brand)} •• ${cards[0].last4 ?? '••••'}`
+        : `${cards.length} cartes enregistrées`;
+  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null } | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const loadProfile = React.useCallback(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('first_name, last_name, avatar_url')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => setProfile(data ?? null));
+  }, [user]);
+
+  useFocusEffect(React.useCallback(() => { loadProfile(); }, [loadProfile]));
+
+  const changeAvatar = async () => {
+    if (!user || uploadingAvatar) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour changer votre image.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    setUploadingAvatar(true);
+    try {
+      const { publicUrl } = await uploadImage({
+        bucket: 'avatars',
+        userId: user.id,
+        uri: result.assets[0].uri,
+        fileNamePrefix: 'avatar',
+      });
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+      if (error) throw error;
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : prev);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Impossible de mettre à jour la photo.";
+      Alert.alert('Erreur', message);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+
+  const fullName =
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || 'Utilisateur Cota';
+  const initials =
+    ((profile?.first_name?.[0] ?? '') + (profile?.last_name?.[0] ?? '')).toUpperCase() || 'U';
+
+  const confirmSignOut = () => {
+    Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Déconnecter',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+            const root = navigation.getParent<RootNav>() ?? (navigation as unknown as RootNav);
+            root.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Échec de la déconnexion';
+            Alert.alert('Erreur', message);
+          }
+        },
+      },
+    ]);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -36,26 +145,30 @@ export const ProfileScreen = () => {
         {/* Header */}
         <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={{ fontSize: 17, fontWeight: '600', color: T.ink, flex: 1, textAlign: 'center' }}>Profil</Text>
-          <TouchableOpacity style={styles.iconCircle}>
+          <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notifications')}>
             <BellIcon size={22} color={T.ink3} />
           </TouchableOpacity>
         </View>
 
         {/* Avatar */}
         <View style={{ alignItems: 'center', paddingBottom: 14, paddingTop: 8 }}>
-          <View style={{ position: 'relative' }}>
-            <Avatar initials="AM" size={92} tone="green" />
+          <TouchableOpacity onPress={changeAvatar} activeOpacity={0.85} style={{ position: 'relative' }}>
+            <Avatar initials={initials} size={92} tone="green" imageUrl={profile?.avatar_url} />
             <View style={styles.cameraBtn}>
               <CameraIcon size={14} color="#fff" />
             </View>
-          </View>
-          <Text style={styles.name}>Alexandre Martin</Text>
-          <Text style={styles.email}>alexandre.martin@email.com</Text>
+          </TouchableOpacity>
+          <Text style={styles.name}>{fullName}</Text>
+          <Text style={styles.email}>{user?.email ?? ''}</Text>
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          {[{ v: '4', l: 'cagnottes' }, { v: '23', l: 'contributions' }, { v: '1 250 €', l: 'levés' }].map(s => (
+          {[
+            { v: String(stats?.pots ?? 0), l: 'cagnottes' },
+            { v: String(stats?.contributions ?? 0), l: 'contributions' },
+            { v: formatEur(stats?.raisedCents ?? 0), l: 'levés' },
+          ].map(s => (
             <View key={s.l} style={styles.statCard}>
               <Text style={styles.statVal}>{s.v}</Text>
               <Text style={styles.statLbl}>{s.l}</Text>
@@ -65,19 +178,29 @@ export const ProfileScreen = () => {
 
         {/* Groups */}
         <Group header="Compte">
-          <Row icon={<IdCardIcon size={20} />} title="Mes informations" sub="Nom, email, téléphone" />
-          <Row icon={<CardIcon size={20} color={T.brand} />} title="Moyens de paiement" sub="Visa •• 1234 et 1 autre" />
-          <Row icon={<ShieldIcon size={20} />} title="Sécurité & Face ID" last />
+          <Row
+            icon={<IdCardIcon size={20} />}
+            title="Mes informations"
+            sub="Nom, email, téléphone"
+            onPress={() => navigation.navigate('EditProfile')}
+          />
+          <Row
+            icon={<CardIcon size={20} color={T.brand} />}
+            title="Moyens de paiement"
+            sub={paymentSubtitle}
+            onPress={() => navigation.navigate('PaymentMethods')}
+          />
+          <Row icon={<ShieldIcon size={20} />} title="Sécurité & Face ID" last onPress={() => navigation.navigate('Security')} />
         </Group>
 
         <Group header="Préférences">
           <Row icon={<GearIcon size={20} />} title="Paramètres" />
-          <Row icon={<BellIcon size={20} color={T.brand} />} title="Notifications" last />
+          <Row icon={<BellIcon size={20} color={T.brand} />} title="Notifications" last onPress={() => navigation.navigate('Notifications')} />
         </Group>
 
         <Group header="Cota">
           <Row icon={<HelpIcon size={20} />} title="Aide et support" />
-          <Row icon={<LogoutIcon size={20} />} title="Déconnexion" danger last />
+          <Row icon={<LogoutIcon size={20} />} title="Déconnexion" danger last onPress={confirmSignOut} />
         </Group>
 
         <Text style={{ textAlign: 'center', paddingTop: 18, color: T.ink4, fontSize: 12 }}>Cota · v1.0.0</Text>

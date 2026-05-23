@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet, StatusBar,
+  View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet, StatusBar, Alert,
   KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { PrimaryButton } from '../../components/Button';
 import { StepProgress } from '../../components/StepProgress';
 import { BackIcon, ShieldIcon } from '../../icons/Icons';
 import { OnboardingStackParamList } from '../../navigation';
+import { useAuth } from '../../lib/auth';
 
 type Nav = StackNavigationProp<OnboardingStackParamList, 'OTP'>;
 type Rt = RouteProp<OnboardingStackParamList, 'OTP'>;
@@ -22,11 +23,52 @@ export const OTPScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
-  const email = route.params?.email ?? 'vous@email.com';
 
+  const email = route.params?.email;
+  const phone = route.params?.phone;
+  const isPhone = !!phone;
+  const recipient = phone ?? email ?? '';
+
+  const { verifyOtp, verifyPhoneOtp, resendOtp } = useAuth();
   const inputRef = useRef<TextInput>(null);
   const [code, setCode] = useState('');
-  const [seconds, setSeconds] = useState(24);
+  const [seconds, setSeconds] = useState(30);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleVerify = async () => {
+    if (code.length < OTP_LENGTH || submitting) return;
+    setSubmitting(true);
+    Keyboard.dismiss();
+    try {
+      if (isPhone) {
+        await verifyPhoneOtp(phone!, code);
+        // Session auto-set → RootNavigator switches to Main
+      } else {
+        await verifyOtp(email!, code);
+        navigation.navigate('ProfileSetup');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Code invalide';
+      Alert.alert('Vérification échouée', message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      if (isPhone) {
+        // For phone, re-send by calling signInWithPhone again
+        Alert.alert('Code renvoyé', `Un nouveau code a été envoyé au ${phone}`);
+      } else {
+        await resendOtp(email!);
+      }
+      setSeconds(30);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Impossible de renvoyer le code';
+      Alert.alert('Erreur', message);
+    }
+  };
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -37,9 +79,7 @@ export const OTPScreen = () => {
   const handleChange = (text: string) => {
     const digits = text.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH);
     setCode(digits);
-    if (digits.length === OTP_LENGTH) {
-      Keyboard.dismiss();
-    }
+    if (digits.length === OTP_LENGTH) Keyboard.dismiss();
   };
 
   const cells = Array.from({ length: OTP_LENGTH }).map((_, i) => code[i] ?? '');
@@ -51,7 +91,7 @@ export const OTPScreen = () => {
       <View style={{ paddingTop: insets.top }}>
         <TopNav
           title="Vérification"
-          sub="2 / 3"
+          sub={isPhone ? undefined : '2 / 3'}
           left={
             <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
               <BackIcon size={22} color={T.ink} />
@@ -65,63 +105,60 @@ export const OTPScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={insets.top + 56}
       >
-      <View style={{ flex: 1, padding: 22 }}>
-        <StepProgress total={3} current={2} style={{ marginBottom: 22 }} />
+        <View style={{ flex: 1, padding: 22 }}>
+          {!isPhone && <StepProgress total={3} current={2} style={{ marginBottom: 22 }} />}
 
-        <View style={styles.badge}>
-          <ShieldIcon size={14} color={T.brandInk} />
-          <Text style={styles.badgeText}>Code envoyé</Text>
+          <View style={styles.badge}>
+            <ShieldIcon size={14} color={T.brandInk} />
+            <Text style={styles.badgeText}>Code envoyé</Text>
+          </View>
+
+          <Text style={styles.title}>Saisissez le code à {OTP_LENGTH} chiffres</Text>
+          <Text style={styles.subtitle}>
+            Envoyé {isPhone ? 'par SMS au' : 'à'}{' '}
+            <Text style={{ color: T.ink, fontWeight: '600' }}>{recipient}</Text>
+            {'  ·  '}
+            <Text style={styles.link} onPress={() => navigation.goBack()}>changer</Text>
+          </Text>
+
+          <TextInput
+            ref={inputRef}
+            value={code}
+            onChangeText={handleChange}
+            keyboardType="number-pad"
+            maxLength={OTP_LENGTH}
+            autoFocus
+            style={styles.hiddenInput}
+          />
+
+          <Pressable style={styles.cells} onPress={() => inputRef.current?.focus()}>
+            {cells.map((digit, i) => (
+              <View key={i} style={[styles.cell, i === cursorIndex && styles.cellActive]}>
+                <Text style={styles.cellText}>{digit}</Text>
+              </View>
+            ))}
+          </Pressable>
+
+          <Text style={styles.resend}>
+            Pas reçu ?{' '}
+            {seconds > 0 ? (
+              <Text style={{ color: T.brand, fontWeight: '600' }}>
+                Renvoyer dans 0:{seconds.toString().padStart(2, '0')}
+              </Text>
+            ) : (
+              <Text style={styles.link} onPress={handleResend}>Renvoyer le code</Text>
+            )}
+          </Text>
         </View>
 
-        <Text style={styles.title}>Saisissez le code à 6 chiffres</Text>
-        <Text style={styles.subtitle}>
-          Envoyé à <Text style={{ color: T.ink, fontWeight: '600' }}>{email}</Text>
-          {'  ·  '}
-          <Text style={styles.link} onPress={() => navigation.goBack()}>changer</Text>
-        </Text>
-
-        {/* Hidden input drives the cells */}
-        <TextInput
-          ref={inputRef}
-          value={code}
-          onChangeText={handleChange}
-          keyboardType="number-pad"
-          maxLength={OTP_LENGTH}
-          autoFocus
-          style={styles.hiddenInput}
-        />
-
-        <Pressable style={styles.cells} onPress={() => inputRef.current?.focus()}>
-          {cells.map((digit, i) => (
-            <View key={i} style={[styles.cell, i === cursorIndex && styles.cellActive]}>
-              <Text style={styles.cellText}>{digit}</Text>
-            </View>
-          ))}
-        </Pressable>
-
-        <Text style={styles.resend}>
-          Pas reçu ?{' '}
-          {seconds > 0 ? (
-            <Text style={{ color: T.brand, fontWeight: '600' }}>
-              Renvoyer dans 0:{seconds.toString().padStart(2, '0')}
-            </Text>
-          ) : (
-            <Text style={styles.link} onPress={() => setSeconds(24)}>Renvoyer le code</Text>
-          )}
-        </Text>
-      </View>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
-        <PrimaryButton
-          onPress={() => {
-            Keyboard.dismiss();
-            navigation.navigate('ProfileSetup');
-          }}
-          style={code.length < OTP_LENGTH ? { opacity: 0.4 } : undefined}
-        >
-          Vérifier
-        </PrimaryButton>
-      </View>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
+          <PrimaryButton
+            onPress={handleVerify}
+            style={code.length < OTP_LENGTH || submitting ? { opacity: 0.4 } : undefined}
+          >
+            {submitting ? 'Vérification…' : 'Vérifier'}
+          </PrimaryButton>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -150,7 +187,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   cellActive: { borderWidth: 2, borderColor: T.brand },
-  cellText: { fontSize: 26, fontWeight: '700', color: T.ink },
+  cellText: { fontSize: 22, fontWeight: '700', color: T.ink },
   resend: { marginTop: 18, textAlign: 'center', fontSize: 13, color: T.ink3 },
   footer: {
     paddingHorizontal: 20, paddingTop: 12,

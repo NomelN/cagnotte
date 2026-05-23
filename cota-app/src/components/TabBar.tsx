@@ -7,19 +7,17 @@ import {
   HomeActiveIcon, HomeInactiveIcon,
   PotsActiveIcon, PotsInactiveIcon,
   PayActiveIcon, PayInactiveIcon,
-  BellTabActiveIcon, BellTabInactiveIcon,
   UserActiveIcon, UserInactiveIcon,
 } from '../icons/Icons';
 
-const TAB_LABELS = ['Accueil', 'Cagnottes', 'Paiement', 'Notifs', 'Profil'];
+const TAB_LABELS = ['Accueil', 'Cagnottes', 'Paiement', 'Profil'];
 
 type TabIconFC = React.FC<{ size?: number }>;
 const TAB_ICONS: Record<string, { active: TabIconFC; inactive: TabIconFC }> = {
-  Home:          { active: HomeActiveIcon,    inactive: HomeInactiveIcon },
-  Pots:          { active: PotsActiveIcon,    inactive: PotsInactiveIcon },
-  Payment:       { active: PayActiveIcon,     inactive: PayInactiveIcon },
-  Notifications: { active: BellTabActiveIcon, inactive: BellTabInactiveIcon },
-  Profile:       { active: UserActiveIcon,    inactive: UserInactiveIcon },
+  Home:    { active: HomeActiveIcon, inactive: HomeInactiveIcon },
+  Pots:    { active: PotsActiveIcon, inactive: PotsInactiveIcon },
+  Payment: { active: PayActiveIcon,  inactive: PayInactiveIcon },
+  Profile: { active: UserActiveIcon, inactive: UserInactiveIcon },
 };
 
 export const CustomTabBar = ({ state, navigation }: BottomTabBarProps) => {

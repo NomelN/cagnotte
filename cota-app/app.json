@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "scheme": "cota",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.cota.app"
@@ -13,10 +14,33 @@
       "adaptiveIcon": {
         "backgroundColor": "#1E9D5A"
       },
-      "package": "com.cota.app"
+      "package": "com.cota.app",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "plugins": [
-      "expo-font"
-    ]
+      "expo-dev-client",
+      "expo-font",
+      "expo-web-browser",
+      "expo-apple-authentication",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.cota.app",
+          "enableGooglePay": false
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      "expo-local-authentication"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "534378ef-18ff-4003-89c1-51fa6c071419"
+      }
+    },
+    "owner": "mike77500"
   }
 }

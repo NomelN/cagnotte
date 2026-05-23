@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, ActivityIndicator, AppState } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { CustomTabBar } from '../components/TabBar';
+import { CotaMark } from '../icons/Icons';
+import { useAuth } from '../lib/auth';
+import { T } from '../theme';
 import { HomeScreen } from '../screens/HomeScreen';
 import { DetailScreen } from '../screens/DetailScreen';
 import { ContributeScreen } from '../screens/ContributeScreen';
@@ -11,62 +15,93 @@ import { ShareScreen } from '../screens/ShareScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { PotsScreen } from '../screens/PotsScreen';
 import { PaymentScreen } from '../screens/PaymentScreen';
+import { PaymentMethodsScreen } from '../screens/PaymentMethodsScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
+import { SecurityScreen } from '../screens/SecurityScreen';
+import { LockScreen } from '../screens/LockScreen';
+import { isBiometricEnabled } from '../lib/biometrics';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { ValuePropsScreen } from '../screens/onboarding/ValuePropsScreen';
 import { AuthMethodsScreen } from '../screens/onboarding/AuthMethodsScreen';
 import { EmailFormScreen } from '../screens/onboarding/EmailFormScreen';
+import { PhoneFormScreen } from '../screens/onboarding/PhoneFormScreen';
 import { OTPScreen } from '../screens/onboarding/OTPScreen';
 import { ProfileSetupScreen } from '../screens/onboarding/ProfileSetupScreen';
 import { WelcomeHomeScreen } from '../screens/onboarding/WelcomeHomeScreen';
 import { PaymentProcessingScreen } from '../screens/states/PaymentProcessingScreen';
 import { SuccessContributionScreen } from '../screens/states/SuccessContributionScreen';
 import { SuccessCreatedScreen } from '../screens/states/SuccessCreatedScreen';
+import { PublicLandingScreen } from '../screens/public/PublicLandingScreen';
+import { PublicContributeScreen } from '../screens/public/PublicContributeScreen';
+import { PublicPaymentScreen } from '../screens/public/PublicPaymentScreen';
+import { PublicThanksScreen } from '../screens/public/PublicThanksScreen';
 
 export type HomeStackParamList = {
   HomeMain: undefined;
-  Detail: { isNew?: boolean } | undefined;
-  Contribute: undefined;
+  Detail: { potId: string };
+  Contribute: { potId: string };
   CreateCategory: undefined;
   CreateDetails: { category: string };
-  Share: undefined;
-  PaymentProcessing: { amount: number };
-  SuccessContribution: { amount: number };
-  SuccessCreated: undefined;
+  Share: { potId: string; potTitle: string };
+  Notifications: undefined;
+  PaymentProcessing: { potId: string; amount: number; cardId: string };
+  SuccessContribution: { potId: string; amount: number; contributionId: string; cardId: string };
+  SuccessCreated: { potId: string };
 };
 
 export type RootTabParamList = {
   Home: undefined;
   Pots: undefined;
   Payment: undefined;
-  Notifications: undefined;
   Profile: undefined;
 };
 
 export type OnboardingStackParamList = {
   Welcome: undefined;
   ValueProps: undefined;
-  AuthMethods: undefined;
-  EmailForm: undefined;
-  OTP: { email: string };
+  AuthMethods: { mode: 'login' | 'signup' };
+  EmailForm: { mode: 'login' | 'signup' };
+  PhoneForm: { mode: 'login' | 'signup' };
+  OTP: { email?: string; phone?: string };
   ProfileSetup: undefined;
   WelcomeHome: { firstName: string };
+};
+
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
+  EditProfile: undefined;
+  PaymentMethods: undefined;
+  Notifications: undefined;
+  Security: undefined;
+};
+
+export type GuestStackParamList = {
+  GuestLanding: { potId?: string } | undefined;
+  GuestContribute: undefined;
+  GuestPayment: { amount: number };
+  GuestThanks: { amount: number };
 };
 
 export type RootStackParamList = {
   Onboarding: undefined;
   Main: undefined;
+  Guest: undefined;
 };
 
 const HomeStack = createStackNavigator<HomeStackParamList>();
+const ProfileStack = createStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const OnboardingStack = createStackNavigator<OnboardingStackParamList>();
+const GuestStack = createStackNavigator<GuestStackParamList>();
 const RootStack = createStackNavigator<RootStackParamList>();
 
 function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStack.Screen name="Notifications" component={NotificationsScreen} />
       <HomeStack.Screen name="Detail" component={DetailScreen} />
       <HomeStack.Screen name="Contribute" component={ContributeScreen} />
       <HomeStack.Screen name="CreateCategory" component={CreateCategoryScreen} />
@@ -91,6 +126,18 @@ function HomeStackNavigator() {
   );
 }
 
+function ProfileStackNavigator() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+      <ProfileStack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
+      <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
+      <ProfileStack.Screen name="Security" component={SecurityScreen} />
+    </ProfileStack.Navigator>
+  );
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -100,8 +147,7 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeStackNavigator} />
       <Tab.Screen name="Pots" component={PotsScreen} />
       <Tab.Screen name="Payment" component={PaymentScreen} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>
   );
 }
@@ -113,6 +159,7 @@ function OnboardingNavigator() {
       <OnboardingStack.Screen name="ValueProps" component={ValuePropsScreen} />
       <OnboardingStack.Screen name="AuthMethods" component={AuthMethodsScreen} />
       <OnboardingStack.Screen name="EmailForm" component={EmailFormScreen} />
+      <OnboardingStack.Screen name="PhoneForm" component={PhoneFormScreen} />
       <OnboardingStack.Screen name="OTP" component={OTPScreen} />
       <OnboardingStack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
       <OnboardingStack.Screen name="WelcomeHome" component={WelcomeHomeScreen} />
@@ -120,11 +167,81 @@ function OnboardingNavigator() {
   );
 }
 
+function GuestNavigator() {
+  return (
+    <GuestStack.Navigator screenOptions={{ headerShown: false }}>
+      <GuestStack.Screen name="GuestLanding" component={PublicLandingScreen} />
+      <GuestStack.Screen name="GuestContribute" component={PublicContributeScreen} />
+      <GuestStack.Screen name="GuestPayment" component={PublicPaymentScreen} />
+      <GuestStack.Screen
+        name="GuestThanks"
+        component={PublicThanksScreen}
+        options={{ gestureEnabled: false }}
+      />
+    </GuestStack.Navigator>
+  );
+}
+
+function SplashScreen() {
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <CotaMark size={72} color={T.brand} />
+      <ActivityIndicator color={T.brand} />
+    </View>
+  );
+}
+
 export function RootNavigator() {
+  const { session, loading } = useAuth();
+  const [locked, setLocked] = useState(false);
+  const appState = useRef(AppState.currentState);
+  const justUnlocked = useRef(false);
+
+  // On mount: lock if biometric is enabled and user is logged in
+  useEffect(() => {
+    if (!session) return;
+    isBiometricEnabled().then(enabled => {
+      if (enabled) setLocked(true);
+    });
+  }, [session]);
+
+  // On foreground return: re-lock — but skip the first 'active' event right
+  // after an unlock (Face ID dialog itself triggers inactive → active)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async nextState => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        if (justUnlocked.current) {
+          justUnlocked.current = false;
+        } else {
+          if (!session) return;
+          const enabled = await isBiometricEnabled();
+          if (enabled) setLocked(true);
+        }
+      }
+      appState.current = nextState;
+    });
+    return () => sub.remove();
+  }, [session]);
+
+  const handleUnlock = () => {
+    justUnlocked.current = true;
+    setLocked(false);
+  };
+
+  if (loading) return <SplashScreen />;
+
+  if (locked && session) {
+    return <LockScreen onUnlock={handleUnlock} />;
+  }
+
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
-      <RootStack.Screen name="Onboarding" component={OnboardingNavigator} />
-      <RootStack.Screen name="Main" component={MainTabs} />
+      {session ? (
+        <RootStack.Screen name="Main" component={MainTabs} />
+      ) : (
+        <RootStack.Screen name="Onboarding" component={OnboardingNavigator} />
+      )}
+      <RootStack.Screen name="Guest" component={GuestNavigator} />
     </RootStack.Navigator>
   );
 }

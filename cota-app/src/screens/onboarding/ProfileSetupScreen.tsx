@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert,
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,17 +13,34 @@ import { PrimaryButton } from '../../components/Button';
 import { StepProgress } from '../../components/StepProgress';
 import { BackIcon, CameraIcon } from '../../icons/Icons';
 import { OnboardingStackParamList } from '../../navigation';
+import { useAuth } from '../../lib/auth';
 
 type Nav = StackNavigationProp<OnboardingStackParamList, 'ProfileSetup'>;
 
 export const ProfileSetupScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
+  const { updateProfile } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [focused, setFocused] = useState<'first' | 'last' | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const initial = (firstName.trim()[0] ?? 'A').toUpperCase();
+
+  const handleFinish = async () => {
+    if (!firstName.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      await updateProfile({ firstName: firstName.trim(), lastName: lastName.trim() });
+      navigation.navigate('WelcomeHome', { firstName: firstName.trim() });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Impossible d\'enregistrer le profil';
+      Alert.alert('Erreur', message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -42,12 +59,12 @@ export const ProfileSetupScreen = () => {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top + 56}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 22 }}
+          contentContainerStyle={{ padding: 22, paddingBottom: insets.bottom + 100 }}
           keyboardShouldPersistTaps="handled"
         >
           <StepProgress total={3} current={3} style={{ marginBottom: 22 }} />
@@ -92,10 +109,10 @@ export const ProfileSetupScreen = () => {
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
           <PrimaryButton
-            onPress={() => navigation.navigate('WelcomeHome', { firstName: firstName.trim() || 'Alexandre' })}
-            style={!firstName.trim() ? { opacity: 0.4 } : undefined}
+            onPress={handleFinish}
+            style={!firstName.trim() || submitting ? { opacity: 0.4 } : undefined}
           >
-            Terminer
+            {submitting ? 'Enregistrement…' : 'Terminer'}
           </PrimaryButton>
         </View>
       </KeyboardAvoidingView>

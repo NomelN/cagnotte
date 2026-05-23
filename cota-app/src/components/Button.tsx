@@ -8,15 +8,24 @@ interface ButtonProps {
   style?: ViewStyle;
 }
 
+// True for strings, numbers, and arrays composed exclusively of them — i.e.
+// any children that must be wrapped in <Text> to satisfy React Native.
+// Anything containing a React element (e.g. <ActivityIndicator/>) renders as-is.
+const isPrimitiveText = (c: React.ReactNode): boolean => {
+  if (typeof c === 'string' || typeof c === 'number') return true;
+  if (Array.isArray(c)) return c.every(isPrimitiveText);
+  return false;
+};
+
 export const PrimaryButton = ({ children, onPress, style }: ButtonProps) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[styles.primary, style]}>
-    <Text style={styles.primaryText}>{children}</Text>
+    {isPrimitiveText(children) ? <Text style={styles.primaryText}>{children}</Text> : children}
   </TouchableOpacity>
 );
 
 export const SecondaryButton = ({ children, onPress, style }: ButtonProps) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[styles.secondary, style]}>
-    <Text style={styles.secondaryText}>{children}</Text>
+    {isPrimitiveText(children) ? <Text style={styles.secondaryText}>{children}</Text> : children}
   </TouchableOpacity>
 );
 

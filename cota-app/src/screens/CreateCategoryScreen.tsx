@@ -42,7 +42,7 @@ export const CreateCategoryScreen = () => {
         <View style={[styles.progressSeg, { backgroundColor: T.ink4 }]} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}>
         <Text style={styles.bigTitle}>Quelle est{'\n'}l'occasion ?</Text>
         <Text style={styles.bigSub}>Choisissez une catégorie pour démarrer.</Text>
 
@@ -67,13 +67,13 @@ export const CreateCategoryScreen = () => {
             );
           })}
         </View>
-      </ScrollView>
 
-      <View style={[styles.cta, { paddingBottom: insets.bottom + 8 }]}>
-        <PrimaryButton onPress={() => navigation.navigate('CreateDetails', { category: selected })}>
-          Continuer
-        </PrimaryButton>
-      </View>
+        <View style={styles.submitWrap}>
+          <PrimaryButton onPress={() => navigation.navigate('CreateDetails', { category: selected })}>
+            Continuer
+          </PrimaryButton>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -105,5 +105,5 @@ const styles = StyleSheet.create({
   iconBox: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   tileTitle: { fontSize: 15, fontWeight: '700', color: T.ink, letterSpacing: -0.2, marginBottom: 3 },
   tileHint: { fontSize: 12, color: T.ink3 },
-  cta: { paddingHorizontal: 20, paddingTop: 12, backgroundColor: 'rgba(242,242,247,0.97)', borderTopWidth: 0.5, borderTopColor: T.sep },
+  submitWrap: { marginTop: 24 },
 });

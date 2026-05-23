@@ -76,7 +76,7 @@ export const WelcomeScreen = () => {
         <PrimaryButton onPress={() => navigation.navigate('ValueProps')}>Commencer</PrimaryButton>
         <Text style={styles.signIn}>
           Déjà un compte ?{' '}
-          <Text style={styles.signInLink} onPress={() => navigation.navigate('AuthMethods')}>
+          <Text style={styles.signInLink} onPress={() => navigation.navigate('AuthMethods', { mode: 'login' })}>
             Se connecter
           </Text>
         </Text>

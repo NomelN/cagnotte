@@ -63,7 +63,7 @@ export const ValuePropsScreen = () => {
       <StatusBar barStyle="dark-content" />
 
       <View style={{ paddingTop: insets.top, alignItems: 'flex-end', paddingHorizontal: 18 }}>
-        <TouchableOpacity onPress={() => navigation.navigate('AuthMethods')} style={{ padding: 10 }}>
+        <TouchableOpacity onPress={() => navigation.navigate('AuthMethods', { mode: 'signup' })} style={{ padding: 10 }}>
           <Text style={styles.skip}>Passer</Text>
         </TouchableOpacity>
       </View>
@@ -86,7 +86,7 @@ export const ValuePropsScreen = () => {
       </View>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
-        <PrimaryButton onPress={() => navigation.navigate('AuthMethods')}>Suivant</PrimaryButton>
+        <PrimaryButton onPress={() => navigation.navigate('AuthMethods', { mode: 'signup' })}>Suivant</PrimaryButton>
       </View>
     </View>
   );

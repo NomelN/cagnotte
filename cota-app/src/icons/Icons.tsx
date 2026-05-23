@@ -33,6 +33,13 @@ export const GoogleIcon = ({ size = 20 }: { size?: number }) => (
   </Svg>
 );
 
+export const FacebookIcon = ({ size = 20 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path fill="#1877F2" d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z"/>
+    <Path fill="#fff" d="M16.671 15.469L17.203 12h-3.328v-2.251c0-.949.465-1.874 1.956-1.874h1.514V4.922s-1.374-.235-2.686-.235c-2.741 0-4.533 1.662-4.533 4.669V12H7.078v3.469h3.047v8.385a12.09 12.09 0 003.75 0V15.47h2.796z"/>
+  </Svg>
+);
+
 export const BellIcon = ({ size = 24, color = '#8E8E93' }: IconProps) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M6 16h12l-1.5-2.2v-3.3a4.5 4.5 0 0 0-9 0v3.3L6 16Z" stroke={color} strokeWidth="1.6" strokeLinejoin="round"/>
@@ -309,5 +316,12 @@ export const UserInactiveIcon = ({ size = 26 }: { size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Circle cx="12" cy="9" r="4" stroke="#8E8E93" strokeWidth="1.7"/>
     <Path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" stroke="#8E8E93" strokeWidth="1.7" strokeLinecap="round"/>
+  </Svg>
+);
+
+export const KeyIcon = ({ size = 24, color = '#1E9D5A' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="8.5" cy="12" r="4.5" stroke={color} strokeWidth="1.7"/>
+    <Path d="M13 12h7.5M17.5 10v4" stroke={color} strokeWidth="1.7" strokeLinecap="round"/>
   </Svg>
 );

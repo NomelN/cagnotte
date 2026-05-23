@@ -1,48 +1,58 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { ProgressBar } from '../components/ProgressBar';
-import { Thumb } from '../components/Thumb';
-import { PrimaryButton } from '../components/Button';
-import { BellIcon, EyeIcon, ArrowRIcon } from '../icons/Icons';
-import { HomeStackParamList } from '../navigation';
-import { homePots } from '../data/mock';
+import { PotThumb } from '../components/PotThumb';
+import { BellIcon, EyeIcon, ArrowRIcon, PlusIcon } from '../icons/Icons';
+import { HomeStackParamList, RootTabParamList } from '../navigation';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useOwnedPots, useProfile, formatEur } from '../data/hooks';
 import { HomeSkeleton } from './states/HomeSkeleton';
 import { EmptyHome } from './states/EmptyHome';
 
 type Nav = StackNavigationProp<HomeStackParamList>;
 
-const POTS = homePots;
-
 export const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
-  const [loading, setLoading] = useState(true);
+  const { pots, loading, refresh } = useOwnedPots();
+  const { profile } = useProfile();
+  const [balanceHidden, setBalanceHidden] = useState(false);
 
-  useEffect(() => {
-    const id = setTimeout(() => setLoading(false), 1100);
-    return () => clearTimeout(id);
-  }, []);
+  // Re-fetch every time this screen comes back into focus (e.g. after
+  // creating a new pot) so newly created cagnottes show up immediately.
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   if (loading) return <HomeSkeleton />;
-  if (POTS.length === 0) return <EmptyHome />;
+  if (!pots || pots.length === 0) return <EmptyHome />;
+
+  const totalRaisedCents = pots.reduce((sum, p) => sum + p.raisedCents, 0);
+  const firstName = profile?.first_name ?? '';
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       <StatusBar barStyle="dark-content" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.greetSmall}>Bonjour,</Text>
-            <Text style={styles.greetName}>Alexandre</Text>
+            <Text style={styles.greetName}>{firstName}</Text>
           </View>
-          <TouchableOpacity style={styles.iconCircle}>
+          <TouchableOpacity
+            style={[styles.iconCircle, styles.iconCirclePrimary, { marginRight: 10 }]}
+            onPress={() => navigation.navigate('CreateCategory')}
+            accessibilityLabel="Créer une cagnotte"
+            activeOpacity={0.85}
+          >
+            <PlusIcon size={20} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notifications')}>
             <BellIcon size={22} color={T.ink3} />
           </TouchableOpacity>
         </View>
@@ -61,17 +71,28 @@ export const HomeScreen = () => {
           <View style={styles.heroTop}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
               <Text style={styles.heroLabel}>Solde disponible</Text>
-              <TouchableOpacity style={{ marginLeft: 8 }}>
-                <EyeIcon size={16} color="rgba(255,255,255,0.7)" />
+              <TouchableOpacity
+                style={{ marginLeft: 8, padding: 4 }}
+                onPress={() => setBalanceHidden(v => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <EyeIcon size={16} color={balanceHidden ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.9)'} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.heroAmount}>1 250,00 €</Text>
-            <Text style={styles.heroSub}>réparti sur 3 cagnottes actives</Text>
+            <Text style={styles.heroAmount}>
+              {balanceHidden ? '•••• €' : formatEur(totalRaisedCents)}
+            </Text>
+            <Text style={styles.heroSub}>
+              {pots.length === 1
+                ? 'réparti sur 1 cagnotte active'
+                : `réparti sur ${pots.length} cagnottes actives`}
+            </Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
             <TouchableOpacity
               style={styles.heroArrowBtn}
-              onPress={() => navigation.navigate('Detail')}
+              disabled={!pots[0]}
+              onPress={() => pots[0] && navigation.navigate('Detail', { potId: pots[0].id })}
             >
               <ArrowRIcon size={20} color="#fff" />
             </TouchableOpacity>
@@ -81,15 +102,20 @@ export const HomeScreen = () => {
         {/* Section header */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Mes cagnottes</Text>
-          <TouchableOpacity><Text style={{ fontSize: 15, color: T.brand, fontWeight: '500' }}>Voir tout</Text></TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate('Pots')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={{ fontSize: 15, color: T.brand, fontWeight: '500' }}>Voir tout</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Pots list */}
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
-          {POTS.map((pot, i) => (
-            <TouchableOpacity key={i} style={styles.potRow} activeOpacity={0.75}
-              onPress={() => navigation.navigate('Detail')}>
-              <Thumb type={pot.thumb} size={64} />
+          {pots.map(pot => (
+            <TouchableOpacity key={pot.id} style={styles.potRow} activeOpacity={0.75}
+              onPress={() => navigation.navigate('Detail', { potId: pot.id })}>
+              <PotThumb coverUrl={pot.coverUrl} fallbackType={pot.thumb} size={64} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.potTitle}>{pot.title}</Text>
                 <Text style={styles.potAmounts}>{pot.raised} <Text style={{ color: T.ink4 }}>/ {pot.goal}</Text></Text>
@@ -102,13 +128,6 @@ export const HomeScreen = () => {
           ))}
         </View>
       </ScrollView>
-
-      {/* Sticky CTA */}
-      <View style={[styles.cta, { paddingBottom: insets.bottom + 8 }]}>
-        <PrimaryButton onPress={() => navigation.navigate('CreateCategory')}>
-          + Créer une cagnotte
-        </PrimaryButton>
-      </View>
     </View>
   );
 };
@@ -121,6 +140,13 @@ const styles = StyleSheet.create({
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4,
+  },
+  iconCirclePrimary: {
+    backgroundColor: T.brand,
+    shadowColor: T.brand,
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
   },
   heroCard: {
     marginHorizontal: 20, borderRadius: 24,
@@ -147,9 +173,4 @@ const styles = StyleSheet.create({
   },
   potTitle: { fontSize: 17, fontWeight: '700', color: T.ink, letterSpacing: -0.2, marginBottom: 2 },
   potAmounts: { fontSize: 13, color: T.ink3 },
-  cta: {
-    paddingHorizontal: 20, paddingTop: 12,
-    backgroundColor: 'rgba(242,242,247,0.97)',
-    borderTopWidth: 0.5, borderTopColor: T.sep,
-  },
 });

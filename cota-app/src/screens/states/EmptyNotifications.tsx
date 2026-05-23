@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import Svg, { G, Path, Text as SvgText } from 'react-native-svg';
 import { T } from '../../theme';
-import { BellIcon } from '../../icons/Icons';
+import { BackIcon, BellIcon } from '../../icons/Icons';
 
 const SleepingBell = () => (
   <Svg viewBox="0 0 160 140" width="100%" height={160}>
@@ -25,13 +26,18 @@ const SleepingBell = () => (
 
 export const EmptyNotifications = () => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       <StatusBar barStyle="dark-content" />
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
+          <BackIcon size={22} color={T.ink} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.content}>
@@ -63,8 +69,16 @@ export const EmptyNotifications = () => {
 };
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: 20, paddingBottom: 16 },
-  headerTitle: { fontSize: 28, fontWeight: '700', color: T.ink, letterSpacing: -0.5 },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingBottom: 12,
+  },
+  iconBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: T.surface,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3,
+  },
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: '600', color: T.ink, textAlign: 'center' },
   content: { paddingHorizontal: 32, paddingTop: 24, alignItems: 'center' },
   illustrationWrap: { width: '100%', height: 160, justifyContent: 'center' },
   halo: {
