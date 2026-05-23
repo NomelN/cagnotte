@@ -39,30 +39,30 @@ export const PaymentScreen = () => {
         <Text style={styles.headerTitle}>Paiement</Text>
       </View>
 
-      {/* Balance summary — real "Reçus ce mois" + "Contribués ce mois". */}
-      <View style={styles.summaryRow}>
-        <View style={[styles.summaryCard, { flex: 1 }]}>
-          <Text style={styles.summaryLabel}>Reçus ce mois</Text>
-          <Text style={[styles.summaryValue, { color: T.brand }]}>
-            +{formatEur(summary.receivedThisMonthCents)}
-          </Text>
-        </View>
-        <View style={[styles.summaryCard, { flex: 1 }]}>
-          <Text style={styles.summaryLabel}>Contribués</Text>
-          <Text style={[styles.summaryValue, { color: T.ink2 }]}>
-            −{formatEur(summary.contributedThisMonthCents)}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Historique</Text>
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
       >
+        {/* Balance summary */}
+        <View style={styles.summaryRow}>
+          <View style={[styles.summaryCard, { flex: 1 }]}>
+            <Text style={styles.summaryLabel}>Reçus ce mois</Text>
+            <Text style={[styles.summaryValue, { color: T.brand }]}>
+              +{formatEur(summary.receivedThisMonthCents)}
+            </Text>
+          </View>
+          <View style={[styles.summaryCard, { flex: 1 }]}>
+            <Text style={styles.summaryLabel}>Contribués</Text>
+            <Text style={[styles.summaryValue, { color: T.ink2 }]}>
+              −{formatEur(summary.contributedThisMonthCents)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Historique</Text>
+        </View>
+
         {loading ? (
           <ActivityIndicator color={T.brand} style={{ marginTop: 32 }} />
         ) : !groups || groups.length === 0 ? (
@@ -95,6 +95,7 @@ export const PaymentScreen = () => {
   );
 };
 
+
 const TxRow = ({ tx, onPress }: { tx: PaymentEntry; onPress: () => void }) => {
   const isIn = tx.direction === 'in';
   const sign = isIn ? '+' : '−';
@@ -112,13 +113,9 @@ const TxRow = ({ tx, onPress }: { tx: PaymentEntry; onPress: () => void }) => {
         styles.txDot,
         { backgroundColor: isIn ? T.brandSoft : T.field },
       ]}>
-        <ArrowRIcon
-          size={18}
-          color={isIn ? T.brand : T.ink2}
-          // The icon points right by default — we rotate to indicate direction.
-          // 90° = down (incoming), -90° = up (outgoing).
-          // No prop for rotation, so wrap in transform on parent View instead.
-        />
+        <View style={{ transform: [{ rotate: isIn ? '90deg' : '-90deg' }] }}>
+          <ArrowRIcon size={18} color={isIn ? T.brand : T.ink2} />
+        </View>
       </View>
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Text style={styles.txLabel} numberOfLines={1}>{titleText}</Text>
@@ -137,7 +134,7 @@ const TxRow = ({ tx, onPress }: { tx: PaymentEntry; onPress: () => void }) => {
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingBottom: 12 },
   headerTitle: { fontSize: 28, fontWeight: '700', color: T.ink, letterSpacing: -0.5 },
-  summaryRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16 },
+  summaryRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16, marginTop: 4 },
   summaryCard: {
     backgroundColor: T.surface, borderRadius: 16, padding: 16,
     borderWidth: 1, borderColor: T.sep,

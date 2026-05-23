@@ -12,7 +12,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { Avatar } from '../components/Avatar';
 import { PrimaryButton, SecondaryButton } from '../components/Button';
-import { BackIcon, CopyIcon, DotsIcon, ShareIcon } from '../icons/Icons';
+import { BackIcon, CopyIcon, DotsIcon, EditIcon, ShareIcon } from '../icons/Icons';
 import { HomeStackParamList } from '../navigation';
 import { DetailSkeleton } from './states/DetailSkeleton';
 import { supabase } from '../lib/supabase';
@@ -226,6 +226,12 @@ export const DetailScreen = () => {
     else load();
   });
 
+  const handleEdit = () => {
+    if (!pot) return;
+    setMenuOpen(false);
+    navigation.navigate('EditPot', { potId: pot.id });
+  };
+
   const handleArchive = () => runMenuAction(() => {
     if (!pot) return;
     Alert.alert(
@@ -423,6 +429,8 @@ export const DetailScreen = () => {
 
             {user?.id === pot.owner_id && (
               <>
+                <MenuSep />
+                <MenuItem icon={<EditIcon size={16} color={T.ink2} />} label="Modifier la cagnotte" onPress={handleEdit} />
                 <MenuSep />
                 {pot.status === 'active' ? (
                   <MenuItem label="Fermer la cagnotte" onPress={handleClose} />

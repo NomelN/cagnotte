@@ -33,10 +33,12 @@ export const GoogleIcon = ({ size = 20 }: { size?: number }) => (
   </Svg>
 );
 
-export const FacebookIcon = ({ size = 20 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24">
-    <Path fill="#1877F2" d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z"/>
-    <Path fill="#fff" d="M16.671 15.469L17.203 12h-3.328v-2.251c0-.949.465-1.874 1.956-1.874h1.514V4.922s-1.374-.235-2.686-.235c-2.741 0-4.533 1.662-4.533 4.669V12H7.078v3.469h3.047v8.385a12.09 12.09 0 003.75 0V15.47h2.796z"/>
+export const FacebookIcon = ({ size = 20, color = '#1877F2' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M13.5 8H11V6c0-.6.4-1 1-1h1.5V2H11C9.3 2 8 3.3 8 5v3H6v3h2v9h3v-9h2.5l.5-3z"
+      fill={color}
+    />
   </Svg>
 );
 
@@ -51,6 +53,13 @@ export const EyeIcon = ({ size = 24, color = '#FFFFFF' }: IconProps) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" stroke={color} strokeWidth="1.6"/>
     <Circle cx="12" cy="12" r="2.6" stroke={color} strokeWidth="1.6"/>
+  </Svg>
+);
+
+export const EyeOffIcon = ({ size = 24, color = '#FFFFFF' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M3 3l18 18M10.5 10.5A3 3 0 0 0 12 15a3 3 0 0 0 2.83-2" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
+    <Path d="M6.5 6.5C4.4 7.9 2.5 10.5 2.5 12s3.5 6 9.5 6c1.9 0 3.6-.4 5-.9M9 4.2C9.9 4.1 10.9 4 12 4c6 0 9.5 6 9.5 6s-.7 1.4-2 2.8" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
   </Svg>
 );
 
@@ -323,5 +332,12 @@ export const KeyIcon = ({ size = 24, color = '#1E9D5A' }: IconProps) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Circle cx="8.5" cy="12" r="4.5" stroke={color} strokeWidth="1.7"/>
     <Path d="M13 12h7.5M17.5 10v4" stroke={color} strokeWidth="1.7" strokeLinecap="round"/>
+  </Svg>
+);
+
+export const EditIcon = ({ size = 24, color = T.ink2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M4 20h4l10.5-10.5a2.83 2.83 0 0 0-4-4L4 16v4z" stroke={color} strokeWidth="1.7" strokeLinejoin="round"/>
+    <Path d="M14.5 5.5l4 4" stroke={color} strokeWidth="1.7" strokeLinecap="round"/>
   </Svg>
 );
