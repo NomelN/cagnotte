@@ -190,7 +190,7 @@ export const ProfileScreen = () => {
             sub={paymentSubtitle}
             onPress={() => navigation.navigate('PaymentMethods')}
           />
-          <Row icon={<ShieldIcon size={20} />} title="Sécurité & Face ID" last />
+          <Row icon={<ShieldIcon size={20} />} title="Sécurité & Face ID" last onPress={() => navigation.navigate('Security')} />
         </Group>
 
         <Group header="Préférences">

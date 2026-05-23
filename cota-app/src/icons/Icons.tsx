@@ -318,3 +318,10 @@ export const UserInactiveIcon = ({ size = 26 }: { size?: number }) => (
     <Path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" stroke="#8E8E93" strokeWidth="1.7" strokeLinecap="round"/>
   </Svg>
 );
+
+export const KeyIcon = ({ size = 24, color = '#1E9D5A' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="8.5" cy="12" r="4.5" stroke={color} strokeWidth="1.7"/>
+    <Path d="M13 12h7.5M17.5 10v4" stroke={color} strokeWidth="1.7" strokeLinecap="round"/>
+  </Svg>
+);
