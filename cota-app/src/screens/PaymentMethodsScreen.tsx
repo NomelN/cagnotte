@@ -76,7 +76,7 @@ export const PaymentMethodsScreen = () => {
           <BackIcon size={22} color={T.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Moyens de paiement</Text>
-        <View style={styles.iconBtn} />
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
