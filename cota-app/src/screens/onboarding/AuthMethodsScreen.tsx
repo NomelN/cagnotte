@@ -24,14 +24,21 @@ export const AuthMethodsScreen = () => {
 
   const { signIn, signUp, signInWithGoogle, signInWithFacebook } = useAuth();
 
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingFacebook, setLoadingFacebook] = useState(false);
 
+  const lastNameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
 
   const handleEmailSubmit = async () => {
     const trimmedEmail = email.trim();
@@ -39,12 +46,24 @@ export const AuthMethodsScreen = () => {
       Alert.alert('Champs requis', 'Veuillez saisir votre email et votre mot de passe.');
       return;
     }
+    if (!isLogin) {
+      if (!firstName.trim() || !lastName.trim()) {
+        Alert.alert('Champs requis', 'Veuillez saisir votre prénom et votre nom.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        Alert.alert('Mots de passe différents', 'Les deux mots de passe ne correspondent pas.');
+        return;
+      }
+    }
     setLoadingEmail(true);
     try {
       if (isLogin) {
         await signIn(trimmedEmail, password);
       } else {
-        await signUp(trimmedEmail, password);
+        await signUp(trimmedEmail, password, firstName.trim(), lastName.trim());
+        navigation.navigate('OTP', { email: trimmedEmail });
+        return;
       }
     } catch (err: any) {
       Alert.alert(
@@ -78,7 +97,20 @@ export const AuthMethodsScreen = () => {
     }
   };
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !loadingEmail;
+  // Supabase default: minimum 6 characters, no required character types.
+  const MIN_PASSWORD = 6;
+  const passwordLongEnough = password.length >= MIN_PASSWORD;
+  const passwordsMatch = !isLogin ? password === confirmPassword && confirmPassword.length > 0 : true;
+  const showPasswordHint = !isLogin && password.length > 0 && !passwordLongEnough;
+  const showMismatchHint = !isLogin && confirmPassword.length > 0 && password !== confirmPassword;
+
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !loadingEmail &&
+    (isLogin
+      ? true
+      : firstName.trim().length > 0
+        && lastName.trim().length > 0
+        && passwordLongEnough
+        && passwordsMatch);
 
   return (
     <KeyboardAvoidingView
@@ -108,9 +140,38 @@ export const AuthMethodsScreen = () => {
           </Text>
         </View>
 
-        {/* Email + password form */}
+        {/* Form */}
         <View style={styles.form}>
+
+          {/* Signup only: first + last name */}
+          {!isLogin && (
+            <View style={styles.nameRow}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="Prénom"
+                placeholderTextColor={T.ink4}
+                autoCapitalize="words"
+                returnKeyType="next"
+                onSubmitEditing={() => lastNameRef.current?.focus()}
+              />
+              <TextInput
+                ref={lastNameRef}
+                style={[styles.input, { flex: 1 }]}
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Nom"
+                placeholderTextColor={T.ink4}
+                autoCapitalize="words"
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+              />
+            </View>
+          )}
+
           <TextInput
+            ref={emailRef}
             style={styles.input}
             value={email}
             onChangeText={setEmail}
@@ -134,20 +195,55 @@ export const AuthMethodsScreen = () => {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={handleEmailSubmit}
+              returnKeyType={isLogin ? 'done' : 'next'}
+              onSubmitEditing={() => isLogin ? handleEmailSubmit() : confirmRef.current?.focus()}
             />
             <TouchableOpacity
               style={styles.eyeBtn}
               onPress={() => setShowPassword(v => !v)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              {showPassword
-                ? <EyeOffIcon size={20} color={T.ink3} />
-                : <EyeIcon size={20} color={T.ink3} />
-              }
+              {showPassword ? <EyeOffIcon size={20} color={T.ink3} /> : <EyeIcon size={20} color={T.ink3} />}
             </TouchableOpacity>
           </View>
+
+          {!isLogin && (
+            <Text style={[styles.hint, showPasswordHint && styles.hintError]}>
+              {showPasswordHint
+                ? `Encore ${MIN_PASSWORD - password.length} caractère${MIN_PASSWORD - password.length > 1 ? 's' : ''}`
+                : `Au moins ${MIN_PASSWORD} caractères`}
+            </Text>
+          )}
+
+          {/* Signup only: confirm password */}
+          {!isLogin && (
+            <View style={styles.passwordRow}>
+              <TextInput
+                ref={confirmRef}
+                style={styles.passwordInput}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirmer le mot de passe"
+                placeholderTextColor={T.ink4}
+                secureTextEntry={!showConfirm}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleEmailSubmit}
+              />
+              <TouchableOpacity
+                style={styles.eyeBtn}
+                onPress={() => setShowConfirm(v => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {showConfirm ? <EyeOffIcon size={20} color={T.ink3} /> : <EyeIcon size={20} color={T.ink3} />}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {showMismatchHint && (
+            <Text style={[styles.hint, styles.hintError]}>Les mots de passe ne correspondent pas</Text>
+          )}
 
           <TouchableOpacity
             style={[styles.submitBtn, !canSubmit && { opacity: 0.5 }]}
@@ -252,6 +348,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '700', letterSpacing: -0.5, color: T.ink, marginTop: 16 },
   subtitle: { fontSize: 14, color: T.ink3, marginTop: 6, lineHeight: 20, textAlign: 'center' },
   form: { paddingHorizontal: 20, marginTop: 24, gap: 12 },
+  nameRow: { flexDirection: 'row', gap: 10 },
   input: {
     backgroundColor: T.surface, borderRadius: 14,
     paddingHorizontal: 16, paddingVertical: 14,
@@ -291,6 +388,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4,
   },
   footer: { paddingHorizontal: 28, marginTop: 28, alignItems: 'center' },
+  hint: { fontSize: 12, color: T.ink3, marginTop: -6, marginLeft: 4 },
+  hintError: { color: T.danger },
   legal: { fontSize: 11, color: T.ink3, lineHeight: 17, textAlign: 'center' },
   legalLink: { textDecorationLine: 'underline', color: T.brand, fontWeight: '600' },
 });
