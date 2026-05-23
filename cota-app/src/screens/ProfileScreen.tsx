@@ -145,7 +145,7 @@ export const ProfileScreen = () => {
         {/* Header */}
         <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={{ fontSize: 17, fontWeight: '600', color: T.ink, flex: 1, textAlign: 'center' }}>Profil</Text>
-          <TouchableOpacity style={styles.iconCircle}>
+          <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notifications')}>
             <BellIcon size={22} color={T.ink3} />
           </TouchableOpacity>
         </View>
@@ -195,7 +195,7 @@ export const ProfileScreen = () => {
 
         <Group header="Préférences">
           <Row icon={<GearIcon size={20} />} title="Paramètres" />
-          <Row icon={<BellIcon size={20} color={T.brand} />} title="Notifications" last />
+          <Row icon={<BellIcon size={20} color={T.brand} />} title="Notifications" last onPress={() => navigation.navigate('Notifications')} />
         </Group>
 
         <Group header="Cota">

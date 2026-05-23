@@ -52,7 +52,7 @@ export const HomeScreen = () => {
           >
             <PlusIcon size={20} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconCircle}>
+          <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notifications')}>
             <BellIcon size={22} color={T.ink3} />
           </TouchableOpacity>
         </View>

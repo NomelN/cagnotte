@@ -18,6 +18,7 @@ import { PaymentScreen } from '../screens/PaymentScreen';
 import { PaymentMethodsScreen } from '../screens/PaymentMethodsScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { ValuePropsScreen } from '../screens/onboarding/ValuePropsScreen';
 import { AuthMethodsScreen } from '../screens/onboarding/AuthMethodsScreen';
@@ -41,6 +42,7 @@ export type HomeStackParamList = {
   CreateCategory: undefined;
   CreateDetails: { category: string };
   Share: undefined;
+  Notifications: undefined;
   PaymentProcessing: { potId: string; amount: number; cardId: string };
   SuccessContribution: { potId: string; amount: number; contributionId: string; cardId: string };
   SuccessCreated: { potId: string };
@@ -50,7 +52,6 @@ export type RootTabParamList = {
   Home: undefined;
   Pots: undefined;
   Payment: undefined;
-  Notifications: undefined;
   Profile: undefined;
 };
 
@@ -69,6 +70,7 @@ export type ProfileStackParamList = {
   ProfileMain: undefined;
   EditProfile: undefined;
   PaymentMethods: undefined;
+  Notifications: undefined;
 };
 
 export type GuestStackParamList = {
@@ -95,6 +97,7 @@ function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStack.Screen name="Notifications" component={NotificationsScreen} />
       <HomeStack.Screen name="Detail" component={DetailScreen} />
       <HomeStack.Screen name="Contribute" component={ContributeScreen} />
       <HomeStack.Screen name="CreateCategory" component={CreateCategoryScreen} />
@@ -125,6 +128,7 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
+      <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -138,7 +142,6 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeStackNavigator} />
       <Tab.Screen name="Pots" component={PotsScreen} />
       <Tab.Screen name="Payment" component={PaymentScreen} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} />
       <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>
   );
