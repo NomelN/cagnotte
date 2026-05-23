@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -10,26 +10,45 @@ import { T } from '../../theme';
 import { Spinner } from '../../components/Spinner';
 import { CheckIcon, LockIcon, ShieldIcon } from '../../icons/Icons';
 import { HomeStackParamList } from '../../navigation';
+import { formatEur } from '../../data/hooks';
+import type { ConfirmerStep, ConfirmerResult } from '../../components/StripeConfirmer';
+
+// Lazy so the Stripe native SDK is only evaluated when the user actually pays.
+const StripeConfirmer = lazy(() => import('../../components/StripeConfirmer'));
 
 type Nav = StackNavigationProp<HomeStackParamList, 'PaymentProcessing'>;
 type Rt = RouteProp<HomeStackParamList, 'PaymentProcessing'>;
 
-const STEPS = [
-  'Paiement initialisé',
-  'Vérification 3D Secure',
-  'Confirmation par la banque',
-  'Reçu de la transaction',
-];
+// Visible checklist. 3D Secure is collapsed into the same "bank verification"
+// step so the user doesn't see a permanently-grey row on the (very common)
+// happy path where no 3DS challenge is required.
+const VISIBLE_STEPS = [
+  'Initialisation du paiement',
+  'Connexion à votre banque',
+  'Paiement confirmé',
+] as const;
+
+// Map a ConfirmerStep to the visible step index that should be "active".
+const stepIndex = (s: ConfirmerStep): number => {
+  if (s === 'creating') return 0;
+  if (s === 'authenticating' || s === 'finalizing') return 1;
+  return 2; // 'done'
+};
 
 export const PaymentProcessingScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
-  const amount = route.params?.amount ?? 50;
+  const { potId, amount, cardId } = route.params;
 
-  const [activeStep, setActiveStep] = useState(1);
+  // Default to 'creating' rather than an extra synthetic 'init' phase — by the
+  // time the screen has rendered, the Confirmer's first onStep is microseconds
+  // away. Defaulting to 'creating' avoids a flash where no step is highlighted.
+  const [step, setStep] = useState<ConfirmerStep>('creating');
+  const [usedAuth, setUsedAuth] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const navigatedRef = useRef(false);
 
-  // Pulsing halo behind the spinner
   const pulse = useSharedValue(1);
   useEffect(() => {
     pulse.value = withRepeat(
@@ -42,16 +61,31 @@ export const PaymentProcessingScreen = () => {
   }, [pulse]);
   const haloStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
-  // Advance the checklist, then move to the success screen
-  useEffect(() => {
-    const timers = [
-      setTimeout(() => setActiveStep(2), 1100),
-      setTimeout(() => setActiveStep(3), 2200),
-      setTimeout(() => setActiveStep(4), 3300),
-      setTimeout(() => navigation.replace('SuccessContribution', { amount }), 3900),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [navigation, amount]);
+  const handleStep = useCallback((s: ConfirmerStep) => {
+    setStep(s);
+    if (s === 'authenticating') setUsedAuth(true);
+  }, []);
+
+  const handleResult = useCallback((r: ConfirmerResult) => {
+    if (navigatedRef.current) return;
+    if (r.ok && r.contributionId) {
+      // Let the final "Paiement confirmé" check briefly show before navigating
+      // so the user gets a satisfying micro-confirmation instead of a hard cut.
+      navigatedRef.current = true;
+      setTimeout(() => {
+        navigation.replace('SuccessContribution', {
+          potId, amount, cardId, contributionId: r.contributionId!,
+        });
+      }, 450);
+    } else if (r.ok) {
+      setErrorMsg('Paiement confirmé mais référence indisponible.');
+    } else {
+      setErrorMsg(r.error ?? 'Le paiement a échoué.');
+    }
+  }, [navigation, potId, amount, cardId]);
+
+  const activeIdx = stepIndex(step);
+  const amountLabel = formatEur(Math.round(amount * 100));
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -64,56 +98,112 @@ export const PaymentProcessingScreen = () => {
       </View>
 
       <View style={styles.content}>
-        {/* Pulsing ring */}
+        {/* Pulsing halo + spinner / error glyph */}
         <View style={styles.ringWrap}>
-          <Animated.View style={[styles.halo, haloStyle]} />
+          <Animated.View
+            style={[
+              styles.halo,
+              haloStyle,
+              errorMsg ? { backgroundColor: '#FFE5E5' } : null,
+            ]}
+          />
           <View style={styles.ringInner}>
-            <Spinner size={64} stroke={4} color={T.brand} trackColor={T.field} arc={0.3} durationMs={1100} />
+            {errorMsg ? (
+              <Text style={{ fontSize: 30 }}>⚠️</Text>
+            ) : step === 'done' ? (
+              <View style={styles.successCheck}>
+                <CheckIcon size={36} color="#fff" />
+              </View>
+            ) : (
+              <Spinner size={64} stroke={4} color={T.brand} trackColor={T.field} arc={0.3} durationMs={1100} />
+            )}
           </View>
         </View>
 
-        <Text style={styles.title}>Paiement en cours…</Text>
-        <Text style={styles.subtitle}>
-          Vérification 3D Secure auprès de votre banque. Ne fermez pas l'application.
+        <Text style={styles.title}>
+          {errorMsg ? 'Paiement non finalisé' : step === 'done' ? 'Paiement confirmé' : 'Paiement en cours…'}
         </Text>
 
-        {/* Steps checklist */}
-        <View style={styles.steps}>
-          {STEPS.map((label, i) => {
-            const done = i < activeStep;
-            const active = i === activeStep;
-            return (
-              <View key={label} style={styles.stepRow}>
-                {done ? (
-                  <View style={styles.stepDone}>
-                    <CheckIcon size={14} color="#fff" />
-                  </View>
-                ) : active ? (
-                  <View style={styles.stepActive}>
-                    <View style={styles.stepActiveDot} />
-                  </View>
-                ) : (
-                  <View style={styles.stepIdle} />
-                )}
-                <Text
-                  style={[
-                    styles.stepLabel,
-                    { color: !done && !active ? T.ink3 : T.ink, fontWeight: active ? '600' : '500' },
-                  ]}
-                >
-                  {label}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
+        {/* Amount being charged — keeps the user oriented on what's happening. */}
+        {!errorMsg && (
+          <Text style={styles.amount}>{amountLabel}</Text>
+        )}
 
-        {/* Stripe reassurance */}
-        <View style={styles.trustBand}>
-          <ShieldIcon size={14} color={T.brand} />
-          <Text style={styles.trustText}>Connexion chiffrée · Stripe</Text>
-        </View>
+        <Text style={styles.subtitle}>
+          {errorMsg
+            ? errorMsg
+            : step === 'authenticating'
+              ? 'Authentification 3D Secure auprès de votre banque…'
+              : "Vérification en cours. Ne fermez pas l'application."}
+        </Text>
+
+        {/* Steps checklist — only rendered while not in an error state. */}
+        {!errorMsg && (
+          <View style={styles.steps}>
+            {VISIBLE_STEPS.map((label, i) => {
+              // After 'done' fires every step is shown as done.
+              const done = step === 'done' ? true : i < activeIdx;
+              const active = step !== 'done' && i === activeIdx;
+              // Show a small "(3D Secure)" hint when the bank verification step
+              // is active AND we actually went through 3DS authentication.
+              const showAuthHint = i === 1 && (step === 'authenticating' || (usedAuth && step === 'finalizing'));
+              return (
+                <View key={label} style={styles.stepRow}>
+                  {done ? (
+                    <View style={styles.stepDone}>
+                      <CheckIcon size={14} color="#fff" />
+                    </View>
+                  ) : active ? (
+                    <View style={styles.stepActive}>
+                      <View style={styles.stepActiveDot} />
+                    </View>
+                  ) : (
+                    <View style={styles.stepIdle} />
+                  )}
+                  <Text
+                    style={[
+                      styles.stepLabel,
+                      { color: !done && !active ? T.ink3 : T.ink, fontWeight: active ? '600' : '500' },
+                    ]}
+                  >
+                    {label}
+                    {showAuthHint ? (
+                      <Text style={styles.stepHint}>  · 3D Secure</Text>
+                    ) : null}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {errorMsg ? (
+          <View style={styles.errorActions}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.errorBackBtn}>
+              <Text style={styles.errorBackText}>Retour</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.trustBand}>
+            <ShieldIcon size={14} color={T.brand} />
+            <Text style={styles.trustText}>Connexion chiffrée · Stripe</Text>
+          </View>
+        )}
       </View>
+
+      {/* Actual Stripe call happens here; lazy-loaded so the native SDK only
+          enters memory once the user reaches this screen. */}
+      {!errorMsg && (
+        <Suspense fallback={null}>
+          <StripeConfirmer
+            potId={potId}
+            amount={amount}
+            cardId={cardId}
+            onStep={handleStep}
+            onResult={handleResult}
+          />
+        </Suspense>
+      )}
     </View>
   );
 };
@@ -133,9 +223,23 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: T.sep,
   },
-  title: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: T.ink, marginTop: 26 },
-  subtitle: { fontSize: 14, color: T.ink3, marginTop: 8, lineHeight: 21, textAlign: 'center', maxWidth: 280 },
-  steps: { marginTop: 28, alignSelf: 'stretch' },
+  successCheck: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: T.brand,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  title: {
+    fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: T.ink,
+    marginTop: 26, textAlign: 'center',
+  },
+  amount: {
+    fontSize: 32, fontWeight: '700', letterSpacing: -0.8, color: T.brand,
+    marginTop: 6, textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14, color: T.ink3, marginTop: 8, lineHeight: 21,
+    textAlign: 'center', maxWidth: 300,
+  },
+  steps: { marginTop: 24, alignSelf: 'stretch' },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   stepDone: {
     width: 22, height: 22, borderRadius: 11, backgroundColor: T.brand,
@@ -149,10 +253,17 @@ const styles = StyleSheet.create({
   stepActiveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: T.brand },
   stepIdle: { width: 22, height: 22, borderRadius: 11, backgroundColor: T.field },
   stepLabel: { fontSize: 14 },
+  stepHint: { fontSize: 12, color: T.ink3, fontWeight: '500' },
   trustBand: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginTop: 28, paddingHorizontal: 14, paddingVertical: 10,
+    marginTop: 24, paddingHorizontal: 14, paddingVertical: 10,
     borderRadius: 12, backgroundColor: T.field,
   },
   trustText: { fontSize: 12, color: T.ink2 },
+  errorActions: { marginTop: 28, alignSelf: 'stretch' },
+  errorBackBtn: {
+    paddingVertical: 14, borderRadius: 14, backgroundColor: T.brand,
+    alignItems: 'center',
+  },
+  errorBackText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });

@@ -281,7 +281,7 @@ export const DetailScreen = () => {
       <View style={[styles.cta, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.ctaRow}>
           <View style={{ flex: 1 }}>
-            <PrimaryButton onPress={() => navigation.navigate('Contribute')}>Contribuer</PrimaryButton>
+            <PrimaryButton onPress={() => navigation.navigate('Contribute', { potId: pot.id })}>Contribuer</PrimaryButton>
           </View>
           <View style={{ flex: 1 }}>
             <SecondaryButton onPress={() => navigation.navigate('Share')}>Partager</SecondaryButton>

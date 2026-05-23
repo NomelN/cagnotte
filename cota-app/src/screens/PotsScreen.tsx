@@ -5,7 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { ProgressBar } from '../components/ProgressBar';
-import { Thumb } from '../components/Thumb';
+import { PotThumb } from '../components/PotThumb';
 import { PrimaryButton } from '../components/Button';
 import { BellIcon, PotsInactiveIcon } from '../icons/Icons';
 import { HomeStackParamList } from '../navigation';
@@ -79,7 +79,7 @@ export const PotsScreen = () => {
               {myPots.map(pot => (
                 <TouchableOpacity key={pot.id} style={styles.potCard} activeOpacity={0.75}
                   onPress={() => navigation.navigate('Detail', { potId: pot.id })}>
-                  <Thumb type={pot.thumb} size={64} />
+                  <PotThumb coverUrl={pot.coverUrl} fallbackType={pot.thumb} size={64} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.potTitle}>{pot.title}</Text>
                     <Text style={styles.potAmounts}>
@@ -107,7 +107,7 @@ export const PotsScreen = () => {
               {contributions.map((c, i) => (
                 <TouchableOpacity key={i} style={styles.potCard} activeOpacity={0.75}
                   onPress={() => navigation.navigate('Detail', { potId: c.pot.id })}>
-                  <Thumb type={c.pot.thumb} size={64} />
+                  <PotThumb coverUrl={c.pot.coverUrl} fallbackType={c.pot.thumb} size={64} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.potTitle}>{c.pot.title}</Text>
                     <Text style={styles.potAmounts}>

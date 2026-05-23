@@ -15,6 +15,7 @@ import { ShareScreen } from '../screens/ShareScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { PotsScreen } from '../screens/PotsScreen';
 import { PaymentScreen } from '../screens/PaymentScreen';
+import { PaymentMethodsScreen } from '../screens/PaymentMethodsScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { ValuePropsScreen } from '../screens/onboarding/ValuePropsScreen';
@@ -35,12 +36,12 @@ import { PublicThanksScreen } from '../screens/public/PublicThanksScreen';
 export type HomeStackParamList = {
   HomeMain: undefined;
   Detail: { potId: string };
-  Contribute: undefined;
+  Contribute: { potId: string };
   CreateCategory: undefined;
   CreateDetails: { category: string };
   Share: undefined;
-  PaymentProcessing: { amount: number };
-  SuccessContribution: { amount: number };
+  PaymentProcessing: { potId: string; amount: number; cardId: string };
+  SuccessContribution: { potId: string; amount: number; contributionId: string; cardId: string };
   SuccessCreated: { potId: string };
 };
 
@@ -63,6 +64,11 @@ export type OnboardingStackParamList = {
   WelcomeHome: { firstName: string };
 };
 
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
+  PaymentMethods: undefined;
+};
+
 export type GuestStackParamList = {
   GuestLanding: { potId?: string } | undefined;
   GuestContribute: undefined;
@@ -77,6 +83,7 @@ export type RootStackParamList = {
 };
 
 const HomeStack = createStackNavigator<HomeStackParamList>();
+const ProfileStack = createStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const OnboardingStack = createStackNavigator<OnboardingStackParamList>();
 const GuestStack = createStackNavigator<GuestStackParamList>();
@@ -110,6 +117,15 @@ function HomeStackNavigator() {
   );
 }
 
+function ProfileStackNavigator() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+      <ProfileStack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
+    </ProfileStack.Navigator>
+  );
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -120,7 +136,7 @@ function MainTabs() {
       <Tab.Screen name="Pots" component={PotsScreen} />
       <Tab.Screen name="Payment" component={PaymentScreen} />
       <Tab.Screen name="Notifications" component={NotificationsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>
   );
 }

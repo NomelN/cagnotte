@@ -5,12 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { T } from '../theme';
 import { ProgressBar } from '../components/ProgressBar';
-import { Thumb } from '../components/Thumb';
+import { PotThumb } from '../components/PotThumb';
 import { BellIcon, EyeIcon, ArrowRIcon, PlusIcon } from '../icons/Icons';
-import { HomeStackParamList } from '../navigation';
+import { HomeStackParamList, RootTabParamList } from '../navigation';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useOwnedPots, useProfile, formatEur } from '../data/hooks';
 import { HomeSkeleton } from './states/HomeSkeleton';
 import { EmptyHome } from './states/EmptyHome';
@@ -19,7 +19,6 @@ type Nav = StackNavigationProp<HomeStackParamList>;
 
 export const HomeScreen = () => {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<Nav>();
   const { pots, loading, refresh } = useOwnedPots();
   const { profile } = useProfile();
@@ -38,13 +37,21 @@ export const HomeScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       <StatusBar barStyle="dark-content" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.greetSmall}>Bonjour,</Text>
             <Text style={styles.greetName}>{firstName}</Text>
           </View>
+          <TouchableOpacity
+            style={[styles.iconCircle, { marginRight: 10 }]}
+            onPress={() => navigation.navigate('CreateCategory')}
+            accessibilityLabel="Créer une cagnotte"
+            activeOpacity={0.8}
+          >
+            <PlusIcon size={20} color={T.brand} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.iconCircle}>
             <BellIcon size={22} color={T.ink3} />
           </TouchableOpacity>
@@ -95,7 +102,12 @@ export const HomeScreen = () => {
         {/* Section header */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Mes cagnottes</Text>
-          <TouchableOpacity><Text style={{ fontSize: 15, color: T.brand, fontWeight: '500' }}>Voir tout</Text></TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate('Pots')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={{ fontSize: 15, color: T.brand, fontWeight: '500' }}>Voir tout</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Pots list */}
@@ -103,7 +115,7 @@ export const HomeScreen = () => {
           {pots.map(pot => (
             <TouchableOpacity key={pot.id} style={styles.potRow} activeOpacity={0.75}
               onPress={() => navigation.navigate('Detail', { potId: pot.id })}>
-              <Thumb type={pot.thumb} size={64} />
+              <PotThumb coverUrl={pot.coverUrl} fallbackType={pot.thumb} size={64} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.potTitle}>{pot.title}</Text>
                 <Text style={styles.potAmounts}>{pot.raised} <Text style={{ color: T.ink4 }}>/ {pot.goal}</Text></Text>
@@ -116,17 +128,6 @@ export const HomeScreen = () => {
           ))}
         </View>
       </ScrollView>
-
-      {/* Floating action button — replaces the sticky "+ Créer une cagnotte"
-          footer to free up screen real estate. Positioned above the tab bar. */}
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => navigation.navigate('CreateCategory')}
-        accessibilityLabel="Créer une cagnotte"
-        style={[styles.fab, { bottom: tabBarHeight + 16 }]}
-      >
-        <PlusIcon size={26} color="#fff" />
-      </TouchableOpacity>
     </View>
   );
 };
@@ -165,16 +166,4 @@ const styles = StyleSheet.create({
   },
   potTitle: { fontSize: 17, fontWeight: '700', color: T.ink, letterSpacing: -0.2, marginBottom: 2 },
   potAmounts: { fontSize: 13, color: T.ink3 },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    width: 58, height: 58, borderRadius: 29,
-    backgroundColor: T.brand,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: T.brand,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
-  },
 });

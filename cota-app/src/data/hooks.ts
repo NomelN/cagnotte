@@ -14,6 +14,7 @@ export interface Pot {
   title: string;
   slug: string;
   category: string;
+  cover_url: string | null;
   goal_amount_cents: number;
   raised_amount_cents: number;
   currency: string;
@@ -30,6 +31,7 @@ export interface PotView {
   goalCents: number;
   pct: number;
   thumb: ThumbType;
+  coverUrl: string | null;
 }
 
 export interface NotifItem {
@@ -80,6 +82,7 @@ const toPotView = (p: Pot): PotView => {
     goalCents: p.goal_amount_cents,
     pct,
     thumb: CATEGORY_THUMB[p.category] ?? 'gift',
+    coverUrl: p.cover_url,
   };
 };
 

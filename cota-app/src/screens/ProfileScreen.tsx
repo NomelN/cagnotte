@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { Avatar } from '../components/Avatar';
@@ -10,8 +10,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { uploadImage } from '../lib/uploadImage';
-import { useUserStats, formatEur } from '../data/hooks';
-import { RootStackParamList } from '../navigation';
+import { useUserStats, usePaymentMethods, formatEur } from '../data/hooks';
+import { ProfileStackParamList, RootStackParamList } from '../navigation';
 
 const Row = ({ icon, title, sub, danger, last, onPress }: {
   icon: React.ReactNode; title: string; sub?: string; danger?: boolean; last?: boolean; onPress?: () => void;
@@ -37,12 +37,29 @@ const Group = ({ header, children }: { header: string; children: React.ReactNode
 );
 
 type RootNav = StackNavigationProp<RootStackParamList>;
+type Nav = StackNavigationProp<ProfileStackParamList, 'ProfileMain'>;
+
+const brandLabel = (b: string | null) =>
+  b ? b.charAt(0).toUpperCase() + b.slice(1) : 'Carte';
 
 export const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
-  const navigation = useNavigation();
+  const navigation = useNavigation<Nav>();
   const { stats } = useUserStats();
+  const { cards, refresh: refreshCards } = usePaymentMethods();
+
+  // Refresh card count when returning from PaymentMethods (e.g. after adding
+  // or deleting one) so the row subtitle stays in sync.
+  useFocusEffect(useCallback(() => { refreshCards(); }, [refreshCards]));
+
+  const paymentSubtitle: string = !cards
+    ? 'Chargement…'
+    : cards.length === 0
+      ? 'Aucune carte enregistrée'
+      : cards.length === 1
+        ? `${brandLabel(cards[0].brand)} •• ${cards[0].last4 ?? '••••'}`
+        : `${cards.length} cartes enregistrées`;
   const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null } | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
@@ -165,7 +182,12 @@ export const ProfileScreen = () => {
         {/* Groups */}
         <Group header="Compte">
           <Row icon={<IdCardIcon size={20} />} title="Mes informations" sub="Nom, email, téléphone" />
-          <Row icon={<CardIcon size={20} color={T.brand} />} title="Moyens de paiement" sub="Aucune carte enregistrée" />
+          <Row
+            icon={<CardIcon size={20} color={T.brand} />}
+            title="Moyens de paiement"
+            sub={paymentSubtitle}
+            onPress={() => navigation.navigate('PaymentMethods')}
+          />
           <Row icon={<ShieldIcon size={20} />} title="Sécurité & Face ID" last />
         </Group>
 
