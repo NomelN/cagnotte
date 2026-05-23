@@ -120,14 +120,16 @@ export const EditProfileScreen = () => {
           <BackIcon size={22} color={T.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mes informations</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
+        <View>
         {/* Avatar */}
         <View style={styles.avatarWrap}>
           <TouchableOpacity onPress={changeAvatar} activeOpacity={0.85}>
@@ -195,6 +197,7 @@ export const EditProfileScreen = () => {
         <Text style={styles.readOnlyHint}>
           Pour modifier votre email ou téléphone, contactez le support.
         </Text>
+        </View>
 
         {/* CTA */}
         <PrimaryButton
@@ -214,11 +217,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
+    gap: 8,
   },
   headerTitle: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    flex: 1,
     textAlign: 'center',
     fontSize: 17,
     fontWeight: '600',
@@ -230,7 +232,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 3,
   },
-  scrollContent: { padding: 20 },
+  scrollContent: { padding: 20, justifyContent: 'space-between' },
   avatarWrap: { alignItems: 'center', marginBottom: 28 },
   cameraBtn: {
     position: 'absolute', right: -2, bottom: -2,
