@@ -89,8 +89,9 @@ export const ContributeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
-        <View style={{ paddingHorizontal: 20 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 24 }}>
+        <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: 'space-between' }}>
+          <View>
           {/* Amount */}
           <Text style={styles.label}>MONTANT</Text>
           <TouchableOpacity
@@ -169,7 +170,9 @@ export const ContributeScreen = () => {
             </View>
             <Text style={styles.addCardText}>Ajouter une carte</Text>
           </TouchableOpacity>
+          </View>
 
+          <View style={styles.ctaSection}>
           <PrimaryButton
             onPress={onContribute}
             style={{ ...styles.ctaButton, ...(!canPay && { opacity: 0.4 }) }}
@@ -179,6 +182,7 @@ export const ContributeScreen = () => {
           <View style={styles.secureRow}>
             <ShieldIcon size={14} color={T.ink3} />
             <Text style={styles.secureText}>Paiement 100% sécurisé</Text>
+          </View>
           </View>
         </View>
       </ScrollView>
@@ -241,7 +245,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   addCardText: { fontSize: 15, fontWeight: '500', color: T.ink3 },
-  ctaButton: { marginTop: 32 },
+  ctaSection: { paddingTop: 24 },
+  ctaButton: {},
   secureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 },
   secureText: { fontSize: 12, color: T.ink3 },
 });
