@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -63,6 +63,18 @@ export const ProfileScreen = () => {
   const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null } | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  const loadProfile = React.useCallback(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('first_name, last_name, avatar_url')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => setProfile(data ?? null));
+  }, [user]);
+
+  useFocusEffect(React.useCallback(() => { loadProfile(); }, [loadProfile]));
+
   const changeAvatar = async () => {
     if (!user || uploadingAvatar) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -100,21 +112,6 @@ export const ProfileScreen = () => {
     }
   };
 
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    supabase
-      .from('profiles')
-      .select('first_name, last_name, avatar_url')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => {
-        if (!cancelled) setProfile(data ?? null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
 
   const fullName =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || 'Utilisateur Cota';
@@ -181,7 +178,12 @@ export const ProfileScreen = () => {
 
         {/* Groups */}
         <Group header="Compte">
-          <Row icon={<IdCardIcon size={20} />} title="Mes informations" sub="Nom, email, téléphone" />
+          <Row
+            icon={<IdCardIcon size={20} />}
+            title="Mes informations"
+            sub="Nom, email, téléphone"
+            onPress={() => navigation.navigate('EditProfile')}
+          />
           <Row
             icon={<CardIcon size={20} color={T.brand} />}
             title="Moyens de paiement"

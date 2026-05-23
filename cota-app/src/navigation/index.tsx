@@ -16,6 +16,7 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { PotsScreen } from '../screens/PotsScreen';
 import { PaymentScreen } from '../screens/PaymentScreen';
 import { PaymentMethodsScreen } from '../screens/PaymentMethodsScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { ValuePropsScreen } from '../screens/onboarding/ValuePropsScreen';
@@ -66,6 +67,7 @@ export type OnboardingStackParamList = {
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
+  EditProfile: undefined;
   PaymentMethods: undefined;
 };
 
@@ -121,6 +123,7 @@ function ProfileStackNavigator() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
     </ProfileStack.Navigator>
   );
