@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { ProgressBar } from '../components/ProgressBar';
@@ -30,8 +30,15 @@ export const PotsScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const [activeTab, setActiveTab] = useState<Tab>('Mes cagnottes');
-  const { pots: myPots, loading: loadingMine } = useOwnedPots();
-  const { items: contributions, loading: loadingContribs } = useContributedPots();
+  const { pots: myPots, loading: loadingMine, refresh: refreshMine } = useOwnedPots();
+  const { items: contributions, loading: loadingContribs, refresh: refreshContribs } = useContributedPots();
+
+  // Refresh both lists when the tab comes back into focus so newly created
+  // pots / contributions appear without restarting the app.
+  useFocusEffect(useCallback(() => {
+    refreshMine();
+    refreshContribs();
+  }, [refreshMine, refreshContribs]));
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -71,7 +78,7 @@ export const PotsScreen = () => {
             <View style={{ paddingHorizontal: 20, gap: 10, paddingTop: 4 }}>
               {myPots.map(pot => (
                 <TouchableOpacity key={pot.id} style={styles.potCard} activeOpacity={0.75}
-                  onPress={() => navigation.navigate('Detail')}>
+                  onPress={() => navigation.navigate('Detail', { potId: pot.id })}>
                   <Thumb type={pot.thumb} size={64} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.potTitle}>{pot.title}</Text>
@@ -99,7 +106,7 @@ export const PotsScreen = () => {
             <View style={{ paddingHorizontal: 20, gap: 10, paddingTop: 4 }}>
               {contributions.map((c, i) => (
                 <TouchableOpacity key={i} style={styles.potCard} activeOpacity={0.75}
-                  onPress={() => navigation.navigate('Detail')}>
+                  onPress={() => navigation.navigate('Detail', { potId: c.pot.id })}>
                   <Thumb type={c.pot.thumb} size={64} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.potTitle}>{c.pot.title}</Text>

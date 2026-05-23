@@ -20,7 +20,14 @@
       "expo-font",
       "expo-web-browser",
       "expo-apple-authentication",
-      "@stripe/stripe-react-native"
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.cota.app",
+          "enableGooglePay": false
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

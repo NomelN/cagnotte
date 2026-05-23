@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { T } from '../theme';
 import { ProgressBar } from '../components/ProgressBar';
 import { Thumb } from '../components/Thumb';
-import { PrimaryButton } from '../components/Button';
-import { BellIcon, EyeIcon, ArrowRIcon } from '../icons/Icons';
+import { BellIcon, EyeIcon, ArrowRIcon, PlusIcon } from '../icons/Icons';
 import { HomeStackParamList } from '../navigation';
 import { useOwnedPots, useProfile, formatEur } from '../data/hooks';
 import { HomeSkeleton } from './states/HomeSkeleton';
@@ -19,9 +19,15 @@ type Nav = StackNavigationProp<HomeStackParamList>;
 
 export const HomeScreen = () => {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<Nav>();
-  const { pots, loading } = useOwnedPots();
+  const { pots, loading, refresh } = useOwnedPots();
   const { profile } = useProfile();
+  const [balanceHidden, setBalanceHidden] = useState(false);
+
+  // Re-fetch every time this screen comes back into focus (e.g. after
+  // creating a new pot) so newly created cagnottes show up immediately.
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   if (loading) return <HomeSkeleton />;
   if (!pots || pots.length === 0) return <EmptyHome />;
@@ -32,7 +38,7 @@ export const HomeScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       <StatusBar barStyle="dark-content" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <View style={{ flex: 1 }}>
@@ -58,11 +64,17 @@ export const HomeScreen = () => {
           <View style={styles.heroTop}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
               <Text style={styles.heroLabel}>Solde disponible</Text>
-              <TouchableOpacity style={{ marginLeft: 8 }}>
-                <EyeIcon size={16} color="rgba(255,255,255,0.7)" />
+              <TouchableOpacity
+                style={{ marginLeft: 8, padding: 4 }}
+                onPress={() => setBalanceHidden(v => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <EyeIcon size={16} color={balanceHidden ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.9)'} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.heroAmount}>{formatEur(totalRaisedCents)}</Text>
+            <Text style={styles.heroAmount}>
+              {balanceHidden ? '•••• €' : formatEur(totalRaisedCents)}
+            </Text>
             <Text style={styles.heroSub}>
               {pots.length === 1
                 ? 'réparti sur 1 cagnotte active'
@@ -72,7 +84,8 @@ export const HomeScreen = () => {
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
             <TouchableOpacity
               style={styles.heroArrowBtn}
-              onPress={() => navigation.navigate('Detail')}
+              disabled={!pots[0]}
+              onPress={() => pots[0] && navigation.navigate('Detail', { potId: pots[0].id })}
             >
               <ArrowRIcon size={20} color="#fff" />
             </TouchableOpacity>
@@ -89,7 +102,7 @@ export const HomeScreen = () => {
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           {pots.map(pot => (
             <TouchableOpacity key={pot.id} style={styles.potRow} activeOpacity={0.75}
-              onPress={() => navigation.navigate('Detail')}>
+              onPress={() => navigation.navigate('Detail', { potId: pot.id })}>
               <Thumb type={pot.thumb} size={64} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.potTitle}>{pot.title}</Text>
@@ -104,12 +117,16 @@ export const HomeScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Sticky CTA */}
-      <View style={[styles.cta, { paddingBottom: insets.bottom + 8 }]}>
-        <PrimaryButton onPress={() => navigation.navigate('CreateCategory')}>
-          + Créer une cagnotte
-        </PrimaryButton>
-      </View>
+      {/* Floating action button — replaces the sticky "+ Créer une cagnotte"
+          footer to free up screen real estate. Positioned above the tab bar. */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('CreateCategory')}
+        accessibilityLabel="Créer une cagnotte"
+        style={[styles.fab, { bottom: tabBarHeight + 16 }]}
+      >
+        <PlusIcon size={26} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -148,9 +165,16 @@ const styles = StyleSheet.create({
   },
   potTitle: { fontSize: 17, fontWeight: '700', color: T.ink, letterSpacing: -0.2, marginBottom: 2 },
   potAmounts: { fontSize: 13, color: T.ink3 },
-  cta: {
-    paddingHorizontal: 20, paddingTop: 12,
-    backgroundColor: 'rgba(242,242,247,0.97)',
-    borderTopWidth: 0.5, borderTopColor: T.sep,
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 58, height: 58, borderRadius: 29,
+    backgroundColor: T.brand,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: T.brand,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
   },
 });

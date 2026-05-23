@@ -6,8 +6,10 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { T } from '../theme';
 import { Avatar } from '../components/Avatar';
 import { BellIcon, CameraIcon, ChevRIcon, IdCardIcon, CardIcon, ShieldIcon, GearIcon, HelpIcon, LogoutIcon } from '../icons/Icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { uploadImage } from '../lib/uploadImage';
 import { useUserStats, formatEur } from '../data/hooks';
 import { RootStackParamList } from '../navigation';
 
@@ -42,6 +44,44 @@ export const ProfileScreen = () => {
   const navigation = useNavigation();
   const { stats } = useUserStats();
   const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null } | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const changeAvatar = async () => {
+    if (!user || uploadingAvatar) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Autorisation requise", "Autorisez l'accès à vos photos pour changer votre image.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    setUploadingAvatar(true);
+    try {
+      const { publicUrl } = await uploadImage({
+        bucket: 'avatars',
+        userId: user.id,
+        uri: result.assets[0].uri,
+        fileNamePrefix: 'avatar',
+      });
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+      if (error) throw error;
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : prev);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Impossible de mettre à jour la photo.";
+      Alert.alert('Erreur', message);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -98,12 +138,12 @@ export const ProfileScreen = () => {
 
         {/* Avatar */}
         <View style={{ alignItems: 'center', paddingBottom: 14, paddingTop: 8 }}>
-          <View style={{ position: 'relative' }}>
+          <TouchableOpacity onPress={changeAvatar} activeOpacity={0.85} style={{ position: 'relative' }}>
             <Avatar initials={initials} size={92} tone="green" imageUrl={profile?.avatar_url} />
             <View style={styles.cameraBtn}>
               <CameraIcon size={14} color="#fff" />
             </View>
-          </View>
+          </TouchableOpacity>
           <Text style={styles.name}>{fullName}</Text>
           <Text style={styles.email}>{user?.email ?? ''}</Text>
         </View>

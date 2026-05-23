@@ -137,29 +137,26 @@ export function useOwnedPots() {
   const { user } = useAuth();
   const [pots, setPots] = useState<PotView[] | null>(null);
 
-  useEffect(() => {
+  const refresh = useCallback(async () => {
     if (!user) {
       setPots([]);
       return;
     }
-    let cancelled = false;
-    setPots(null);
-    supabase
+    const { data } = await supabase
       .from('pots')
       .select('*')
       .eq('owner_id', user.id)
       .neq('status', 'archived')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (cancelled) return;
-        setPots((data as Pot[] | null)?.map(toPotView) ?? []);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .order('created_at', { ascending: false });
+    setPots((data as Pot[] | null)?.map(toPotView) ?? []);
   }, [user]);
 
-  return { pots, loading: pots === null };
+  useEffect(() => {
+    setPots(null);
+    refresh();
+  }, [refresh]);
+
+  return { pots, loading: pots === null, refresh };
 }
 
 export function useContributedPots() {
@@ -168,34 +165,31 @@ export function useContributedPots() {
     { pot: PotView; amount: string; date: string }[] | null
   >(null);
 
-  useEffect(() => {
+  const refresh = useCallback(async () => {
     if (!user) {
       setItems([]);
       return;
     }
-    let cancelled = false;
-    setItems(null);
-    supabase
+    const { data } = await supabase
       .from('contributions')
       .select('amount_cents, created_at, pots(*)')
       .eq('contributor_id', user.id)
       .eq('status', 'succeeded')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (cancelled) return;
-        const rows = (data ?? []).map((c: any) => ({
-          pot: toPotView(c.pots as Pot),
-          amount: formatEur(c.amount_cents),
-          date: new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
-        }));
-        setItems(rows);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .order('created_at', { ascending: false });
+    const rows = (data ?? []).map((c: any) => ({
+      pot: toPotView(c.pots as Pot),
+      amount: formatEur(c.amount_cents),
+      date: new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+    }));
+    setItems(rows);
   }, [user]);
 
-  return { items, loading: items === null };
+  useEffect(() => {
+    setItems(null);
+    refresh();
+  }, [refresh]);
+
+  return { items, loading: items === null, refresh };
 }
 
 export function useNotifications() {

@@ -34,14 +34,14 @@ import { PublicThanksScreen } from '../screens/public/PublicThanksScreen';
 
 export type HomeStackParamList = {
   HomeMain: undefined;
-  Detail: { isNew?: boolean } | undefined;
+  Detail: { potId: string };
   Contribute: undefined;
   CreateCategory: undefined;
   CreateDetails: { category: string };
   Share: undefined;
   PaymentProcessing: { amount: number };
   SuccessContribution: { amount: number };
-  SuccessCreated: undefined;
+  SuccessCreated: { potId: string };
 };
 
 export type RootTabParamList = {

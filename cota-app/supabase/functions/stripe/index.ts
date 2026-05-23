@@ -1,3 +1,8 @@
+// @ts-nocheck — Deno runtime; VS Code's Node tsserver doesn't know about
+// `npm:` specifiers or the global `Deno`. Supabase typechecks this file with
+// Deno at deploy time. Install the "Deno" VS Code extension if you want
+// editor typechecking here.
+//
 // Supabase Edge Function: Stripe card management.
 //
 // Actions (POST JSON body { action, ... }):

@@ -56,7 +56,9 @@ export const SuccessContributionScreen = () => {
   }, [pulse]);
   const medalStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
-  const goToPot = () => navigation.navigate('Detail');
+  // The contribute flow doesn't yet carry a potId end-to-end — it will when
+  // Stripe is wired. For now, return the user to home rather than guessing.
+  const goToPot = () => navigation.navigate('HomeMain');
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
