@@ -12,7 +12,13 @@ interface AuthContextValue {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<void>;
+  /** True only right after a fresh signup (OTP verified). Reset once consumed. */
+  justSignedUp: boolean;
+  /** Optional action queued for HomeScreen to pick up after welcome dismisses. */
+  pendingAction: 'create' | 'join' | null;
+  consumeJustSignedUp: (action?: 'create' | 'join' | null) => void;
+  consumePendingAction: () => 'create' | 'join' | null;
+  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithApple: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -30,6 +36,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [justSignedUp, setJustSignedUp] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'create' | 'join' | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -135,10 +143,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       session,
       user: session?.user ?? null,
       loading,
+      justSignedUp,
+      pendingAction,
+      consumeJustSignedUp: (action: 'create' | 'join' | null = null) => {
+        if (action) setPendingAction(action);
+        setJustSignedUp(false);
+      },
+      consumePendingAction: () => {
+        const a = pendingAction;
+        setPendingAction(null);
+        return a;
+      },
 
-      signUp: async (email, password) => {
-        const { error } = await supabase.auth.signUp({ email, password });
+      signUp: async (email, password, firstName, lastName) => {
+        // Store names as user_metadata — they survive the email-confirm step
+        // and get synced into `profiles` once the session is created post-OTP.
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              first_name: firstName?.trim() ?? null,
+              last_name: lastName?.trim() ?? null,
+            },
+          },
+        });
         if (error) throw error;
+
+        // Supabase anti-enumeration: when the email already exists, signUp
+        // returns 200 with an empty identities array and sends NO email.
+        // Surface this clearly instead of letting the user wait for a code
+        // that will never arrive.
+        if (data.user && (data.user.identities?.length ?? 0) === 0) {
+          throw new Error('Cet email est déjà utilisé. Connectez-vous ou réinitialisez votre mot de passe.');
+        }
       },
 
       signIn: async (email, password) => {
@@ -176,12 +214,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       },
 
       verifyOtp: async (email, token) => {
-        const { error } = await supabase.auth.verifyOtp({
+        const { data, error } = await supabase.auth.verifyOtp({
           email,
           token,
           type: 'signup',
         });
         if (error) throw error;
+        // Session is now active — flush user_metadata names into `profiles`.
+        const user = data.user;
+        if (user) {
+          const meta = (user.user_metadata ?? {}) as { first_name?: string | null; last_name?: string | null };
+          if (meta.first_name || meta.last_name) {
+            await supabase.from('profiles').upsert(
+              {
+                id: user.id,
+                ...(meta.first_name ? { first_name: meta.first_name } : {}),
+                ...(meta.last_name ? { last_name: meta.last_name } : {}),
+              },
+              { onConflict: 'id' },
+            );
+          }
+        }
+        // Flag a fresh signup so the Main stack can show the welcome screen
+        // before the home tabs.
+        setJustSignedUp(true);
       },
 
       verifyPhoneOtp: async (phone, token) => {
@@ -213,7 +269,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) throw error;
       },
     }),
-    [session, loading],
+    [session, loading, justSignedUp, pendingAction],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -195,7 +195,7 @@ function SplashScreen() {
 }
 
 export function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, justSignedUp } = useAuth();
   const [locked, setLocked] = useState(false);
   const appState = useRef(AppState.currentState);
   const justUnlocked = useRef(false);
@@ -235,6 +235,12 @@ export function RootNavigator() {
 
   if (locked && session) {
     return <LockScreen onUnlock={handleUnlock} />;
+  }
+
+  // After a fresh signup, show the celebration screen before unlocking the
+  // main tabs. Rendered outside the navigator so it lives above any stack.
+  if (session && justSignedUp) {
+    return <WelcomeHomeScreen />;
   }
 
   return (

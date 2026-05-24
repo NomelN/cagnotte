@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -7,7 +8,8 @@ import Svg, { Circle, Path, Rect, Ellipse, G, Text as SvgText } from 'react-nati
 import { T } from '../../theme';
 import { PrimaryButton } from '../../components/Button';
 import {
-  BellIcon, PlusIcon, GiftIcon, PlaneIcon, BabyIcon, HeartIcon, HandIcon,
+  BellIcon, PlusIcon, EyeIcon, ArrowRIcon,
+  GiftIcon, PlaneIcon, BabyIcon, HeartIcon, HandIcon,
 } from '../../icons/Icons';
 import { HomeStackParamList } from '../../navigation';
 import { useProfile } from '../../data/hooks';
@@ -47,81 +49,116 @@ export const EmptyHome = () => {
   const navigation = useNavigation<Nav>();
   const { profile } = useProfile();
   const firstName = profile?.first_name ?? '';
+  const [balanceHidden, setBalanceHidden] = useState(false);
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       <StatusBar barStyle="dark-content" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
-        {/* Header */}
+
+        {/* Header — identical to HomeScreen */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.greetSmall}>Bonjour,</Text>
             <Text style={styles.greetName}>{firstName}</Text>
           </View>
-          <TouchableOpacity style={styles.iconCircle}>
+          <TouchableOpacity
+            style={[styles.iconCircle, styles.iconCirclePrimary, { marginRight: 10 }]}
+            onPress={() => navigation.navigate('CreateCategory')}
+            accessibilityLabel="Créer une cagnotte"
+            activeOpacity={0.85}
+          >
+            <PlusIcon size={20} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.navigate('Notifications')}>
             <BellIcon size={22} color={T.ink3} />
           </TouchableOpacity>
         </View>
 
-        <View style={{ paddingHorizontal: 18 }}>
-          {/* €0 balance */}
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Solde disponible</Text>
-            <Text style={styles.balanceAmount}>
-              0,00 <Text style={{ color: T.ink3 }}>€</Text>
+        {/* Hero card — identical layout, just €0 */}
+        <LinearGradient
+          colors={[T.brand, T.brandDeep]}
+          start={{ x: 0.2, y: 0 }} end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <Svg width="100%" height="60" viewBox="0 0 360 60" preserveAspectRatio="none"
+            style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+            <Path d="M0 40 Q60 20 120 35 Q180 50 240 30 Q300 10 360 25 L360 60 L0 60 Z" fill="rgba(255,255,255,0.12)"/>
+            <Path d="M0 50 Q80 30 160 45 Q240 60 320 40 L360 45 L360 60 L0 60 Z" fill="rgba(255,255,255,0.08)"/>
+          </Svg>
+          <View style={styles.heroTop}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={styles.heroLabel}>Solde disponible</Text>
+              <TouchableOpacity
+                style={{ marginLeft: 8, padding: 4 }}
+                onPress={() => setBalanceHidden(v => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <EyeIcon size={16} color={balanceHidden ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.9)'} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.heroAmount}>
+              {balanceHidden ? '•••• €' : '0,00 €'}
             </Text>
-            <Text style={styles.balanceSub}>Vous n'avez pas encore de cagnotte active.</Text>
-            <Svg viewBox="0 0 80 80" width={64} height={64} style={styles.balanceIcon}>
-              <Circle cx="40" cy="40" r="32" fill={T.brandSoft} />
-              <Path
-                d="M22 46 c 0 -10 8 -18 18 -18 s 18 8 18 18 v 6 a 4 4 0 0 1 -4 4 H 26 a 4 4 0 0 1 -4 -4 z"
-                fill={T.brand} fillOpacity="0.22"
-              />
-              <Path d="M26 36 v -2 a 14 14 0 0 1 28 0 v 2" stroke={T.brand} strokeWidth="2" fill="none" strokeLinecap="round" />
-            </Svg>
+            <Text style={styles.heroSub}>Aucune cagnotte active pour l'instant</Text>
           </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
+            <TouchableOpacity
+              style={styles.heroArrowBtn}
+              onPress={() => navigation.navigate('CreateCategory')}
+            >
+              <ArrowRIcon size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
 
-          {/* Illustration + CTA */}
-          <View style={{ marginTop: 22, alignItems: 'center' }}>
+        {/* Section: Mes cagnottes — empty state */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Mes cagnottes</Text>
+        </View>
+
+        <View style={{ paddingHorizontal: 20 }}>
+          <View style={styles.emptyCard}>
             <View style={styles.illustrationWrap}>
               <View style={styles.halo} />
               <EmptyPotIllustration />
             </View>
-            <Text style={styles.title}>Lancez votre première cagnotte</Text>
-            <Text style={styles.subtitle}>
+            <Text style={styles.emptyTitle}>Lancez votre première cagnotte</Text>
+            <Text style={styles.emptySub}>
               Anniversaire, voyage, cadeau commun… Récoltez en quelques minutes, sans frais.
             </Text>
-            <View style={{ marginTop: 18, alignSelf: 'stretch' }}>
+            <View style={{ marginTop: 16, alignSelf: 'stretch' }}>
               <PrimaryButton onPress={() => navigation.navigate('CreateCategory')}>
                 + Créer une cagnotte
               </PrimaryButton>
             </View>
-            <Text style={styles.joinLink}>ou rejoindre une cagnotte avec un code</Text>
           </View>
+        </View>
 
-          {/* Ideas */}
-          <View style={{ marginTop: 24 }}>
-            <Text style={styles.sectionLabel}>Idées populaires</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
-            >
-              {IDEAS.map(({ Icon, label }) => (
-                <TouchableOpacity
-                  key={label}
-                  style={styles.ideaChip}
-                  onPress={() => navigation.navigate('CreateCategory')}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.ideaIcon}>
-                    <Icon size={18} color={T.brand} />
-                  </View>
-                  <Text style={styles.ideaLabel}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        {/* Ideas */}
+        <View style={{ marginTop: 24 }}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Idées populaires</Text>
           </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 10, paddingHorizontal: 20, paddingBottom: 4 }}
+          >
+            {IDEAS.map(({ Icon, label }) => (
+              <TouchableOpacity
+                key={label}
+                style={styles.ideaChip}
+                onPress={() => navigation.navigate('CreateCategory')}
+                activeOpacity={0.75}
+              >
+                <View style={styles.ideaIcon}>
+                  <Icon size={18} color={T.brand} />
+                </View>
+                <Text style={styles.ideaLabel}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       </ScrollView>
     </View>
@@ -129,37 +166,59 @@ export const EmptyHome = () => {
 };
 
 const styles = StyleSheet.create({
+  // Header — match HomeScreen exactly
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16 },
   greetSmall: { fontSize: 14, color: T.ink3 },
   greetName: { fontSize: 28, fontWeight: '700', color: T.ink, letterSpacing: -0.5, marginTop: 2 },
   iconCircle: {
-    width: 42, height: 42, borderRadius: 21, backgroundColor: T.surface,
-    alignItems: 'center', justifyContent: 'center',
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4,
   },
-  balanceCard: {
-    borderRadius: 24, padding: 22, backgroundColor: T.surface,
-    borderWidth: 1, borderColor: T.sep, overflow: 'hidden',
+  iconCirclePrimary: {
+    backgroundColor: T.brand,
+    shadowColor: T.brand,
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
   },
-  balanceLabel: { fontSize: 13, color: T.ink3, fontWeight: '500' },
-  balanceAmount: { fontSize: 38, fontWeight: '700', letterSpacing: -1, color: T.ink, marginTop: 6 },
-  balanceSub: { fontSize: 13, color: T.ink3, marginTop: 4 },
-  balanceIcon: { position: 'absolute', right: 14, top: 18 },
-  illustrationWrap: { height: 200, width: '100%', justifyContent: 'center' },
+  // Hero card — match HomeScreen exactly
+  heroCard: {
+    marginHorizontal: 20, borderRadius: 24,
+    paddingHorizontal: 24, paddingVertical: 24,
+    overflow: 'hidden', minHeight: 160,
+  },
+  heroTop: { zIndex: 1 },
+  heroLabel: { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+  heroAmount: { fontSize: 38, fontWeight: '700', color: '#fff', letterSpacing: -1, marginBottom: 4 },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.65)' },
+  heroArrowBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
+  },
+  // Section header — match HomeScreen
+  sectionHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, marginTop: 28, marginBottom: 12,
+  },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: T.ink, letterSpacing: -0.3 },
+  // Empty-state body
+  emptyCard: {
+    backgroundColor: T.surface, borderRadius: 22, padding: 20,
+    borderWidth: 1, borderColor: T.sep,
+    alignItems: 'center',
+  },
+  illustrationWrap: { height: 180, width: '100%', justifyContent: 'center', alignItems: 'center' },
   halo: {
-    position: 'absolute', alignSelf: 'center', width: 200, height: 180, borderRadius: 100,
-    backgroundColor: T.brandSoft, opacity: 0.5,
+    position: 'absolute', width: 180, height: 160, borderRadius: 90,
+    backgroundColor: T.brandSoft, opacity: 0.55,
   },
-  title: { fontSize: 24, fontWeight: '700', letterSpacing: -0.4, color: T.ink, textAlign: 'center', marginTop: 8 },
-  subtitle: {
-    fontSize: 15, color: T.ink3, marginTop: 8, lineHeight: 22,
-    textAlign: 'center', paddingHorizontal: 14,
+  emptyTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: T.ink, textAlign: 'center', marginTop: 4 },
+  emptySub: {
+    fontSize: 14, color: T.ink3, marginTop: 8, lineHeight: 21,
+    textAlign: 'center', paddingHorizontal: 8,
   },
-  joinLink: { marginTop: 12, fontSize: 13, color: T.brand, fontWeight: '600' },
-  sectionLabel: {
-    fontSize: 13, color: T.ink3, fontWeight: '600',
-    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10,
-  },
+  // Ideas chips
   ideaChip: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingVertical: 10, paddingLeft: 10, paddingRight: 14,
