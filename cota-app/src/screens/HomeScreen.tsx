@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -14,6 +15,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useOwnedPots, useProfile, formatEur } from '../data/hooks';
 import { HomeSkeleton } from './states/HomeSkeleton';
 import { EmptyHome } from './states/EmptyHome';
+import { useAuth } from '../lib/auth';
 
 type Nav = StackNavigationProp<HomeStackParamList>;
 
@@ -22,11 +24,47 @@ export const HomeScreen = () => {
   const navigation = useNavigation<Nav>();
   const { pots, loading, refresh } = useOwnedPots();
   const { profile } = useProfile();
+  const { consumePendingAction } = useAuth();
   const [balanceHidden, setBalanceHidden] = useState(false);
 
   // Re-fetch every time this screen comes back into focus (e.g. after
   // creating a new pot) so newly created cagnottes show up immediately.
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
+
+  // Pick up any action queued by the welcome screen post-signup
+  // ('create' → open create flow, 'join' → try to import a shared pot link).
+  useEffect(() => {
+    const action = consumePendingAction();
+    if (!action) return;
+    if (action === 'create') {
+      navigation.navigate('CreateCategory');
+    } else if (action === 'join') {
+      handleJoinAction();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleJoinAction = async () => {
+    const clip = (await Clipboard.getStringAsync()).trim();
+    // Match cota.app/pot/{uuid} or cota://pot/{uuid}
+    const match = clip.match(/(?:cota\.app|cota:\/\/)\/?pot\/([0-9a-f-]{8,})/i);
+    if (match) {
+      const potId = match[1];
+      Alert.alert(
+        'Lien détecté',
+        'Une cagnotte a été trouvée dans votre presse-papiers. L\'ouvrir maintenant ?',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Ouvrir', onPress: () => navigation.navigate('Detail', { potId }) },
+        ],
+      );
+    } else {
+      Alert.alert(
+        'Aucun lien trouvé',
+        'Copiez d\'abord le lien de la cagnotte (cota.app/pot/…) puis touchez à nouveau « J\'ai reçu un lien ».',
+      );
+    }
+  };
 
   if (loading) return <HomeSkeleton />;
   if (!pots || pots.length === 0) return <EmptyHome />;

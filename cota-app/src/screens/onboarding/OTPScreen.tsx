@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet, StatusBar, Alert,
-  KeyboardAvoidingView, Platform, Keyboard,
+  ScrollView, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -45,7 +45,8 @@ export const OTPScreen = () => {
         // Session auto-set → RootNavigator switches to Main
       } else {
         await verifyOtp(email!, code);
-        navigation.navigate('ProfileSetup');
+        // Session is now active. justSignedUp flag in AuthContext makes
+        // RootNavigator render WelcomeHomeScreen before unlocking Main.
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Code invalide';
@@ -100,12 +101,19 @@ export const OTPScreen = () => {
         />
       </View>
 
-      <KeyboardAvoidingView
+      <ScrollView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + 56}
+        contentContainerStyle={{
+          flexGrow: 1,
+          padding: 22,
+          paddingBottom: insets.bottom + 24,
+          justifyContent: 'space-between',
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets
       >
-        <View style={{ flex: 1, padding: 22 }}>
+        <View>
           {!isPhone && <StepProgress total={3} current={2} style={{ marginBottom: 22 }} />}
 
           <View style={styles.badge}>
@@ -151,15 +159,13 @@ export const OTPScreen = () => {
           </Text>
         </View>
 
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
-          <PrimaryButton
-            onPress={handleVerify}
-            style={code.length < OTP_LENGTH || submitting ? { opacity: 0.4 } : undefined}
-          >
-            {submitting ? 'Vérification…' : 'Vérifier'}
-          </PrimaryButton>
-        </View>
-      </KeyboardAvoidingView>
+        <PrimaryButton
+          onPress={handleVerify}
+          style={code.length < OTP_LENGTH || submitting ? { opacity: 0.4, marginTop: 24 } : { marginTop: 24 }}
+        >
+          {submitting ? 'Vérification…' : 'Vérifier'}
+        </PrimaryButton>
+      </ScrollView>
     </View>
   );
 };
@@ -189,9 +195,4 @@ const styles = StyleSheet.create({
   cellActive: { borderWidth: 2, borderColor: T.brand },
   cellText: { fontSize: 22, fontWeight: '700', color: T.ink },
   resend: { marginTop: 18, textAlign: 'center', fontSize: 13, color: T.ink3 },
-  footer: {
-    paddingHorizontal: 20, paddingTop: 12,
-    backgroundColor: 'rgba(242,242,247,0.97)',
-    borderTopWidth: 0.5, borderTopColor: T.sep,
-  },
 });
